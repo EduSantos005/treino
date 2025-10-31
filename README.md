@@ -1,50 +1,157 @@
-# Welcome to your Expo app 👋
+# AppTreino
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Um aplicativo móvel para registro e acompanhamento de treinos de academia, desenvolvido com React Native e Expo.
 
-## Get started
+## 🏋️‍♂️ Funcionalidades
 
-1. Install dependencies
+### Gerenciamento de Treinos
+- ✅ Criar novos treinos
+- ✅ Visualizar lista de treinos
+- ✅ Editar treinos existentes
+- ✅ Excluir treinos
+- ✅ Armazenamento local persistente
+- ✅ Categorização de treinos
 
-   ```bash
-   npm install
-   ```
+### Gestão de Exercícios
+- ✅ Adicionar múltiplos exercícios a um treino
+- ✅ Remover exercícios específicos
+- ✅ Para cada exercício:
+  - Nome do exercício
+  - Número de séries
+  - Número de repetições
+  - Peso em kg
+  - Foto do exercício (câmera ou galeria)
 
-2. Start the app
+### Interface do Usuário
+- ✅ Design moderno e intuitivo
+- ✅ Navegação fluida entre campos
+- ✅ Validação de dados
+- ✅ Feedback visual para ações
+- ✅ Suporte a gestos
+- ✅ Adaptação automática ao teclado
+- ✅ Visualização de fotos dos exercícios
+- ✅ Indicador de exercícios com fotos na lista
 
-   ```bash
-   npx expo start
-   ```
+### Usabilidade
+- ✅ Navegação automática entre campos usando Return/Enter
+- ✅ Limitação inteligente de caracteres em campos numéricos
+- ✅ Teclado numérico para campos apropriados
+- ✅ Confirmação para ações importantes
+- ✅ Mensagens de feedback claras
+- ✅ Opção de tirar foto ou escolher da galeria
+- ✅ Edição de fotos antes de salvar
 
-In the output, you'll find options to open the app in a
+## 🛠 Tecnologias Utilizadas
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- **React Native**: Framework para desenvolvimento mobile
+- **Expo**: Plataforma de desenvolvimento
+- **React Navigation**: Sistema de navegação
+- **AsyncStorage**: Armazenamento local persistente
+- **TypeScript**: Tipagem estática
+- **React Hooks**: Gerenciamento de estado
+- **Safe Area Context**: Adaptação a diferentes dispositivos
+- **Expo Image Picker**: Captura e seleção de imagens
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📱 Telas
 
-## Get a fresh project
+### Tela Inicial (Home)
+- Lista de treinos cadastrados
+- Botão para adicionar novo treino
+- Opções de editar e excluir para cada treino
+- Estado vazio com mensagem apropriada
+- Indicador de exercícios com fotos
+- Categorias dos treinos
 
-When you're ready, run:
+### Tela de Adicionar/Editar Treino
+- Formulário intuitivo
+- Campos otimizados para entrada de dados
+- Navegação automática entre campos
+- Validações em tempo real
+- Suporte a fotos dos exercícios
+- Seleção de categoria do treino
 
-```bash
-npm run reset-project
+## 💾 Armazenamento
+
+Os dados são persistidos localmente usando AsyncStorage com a seguinte estrutura:
+
+```typescript
+type WorkoutCategory = 'chest-triceps' | 'back-biceps' | 'legs' | 'shoulders' | 'other';
+
+interface Exercise {
+  id: string;
+  name: string;
+  sets: string;
+  reps: string;
+  weight: string;
+  imageUri?: string;
+  notes?: string;
+}
+
+interface Workout {
+  id: string;
+  name: string;
+  category: WorkoutCategory;
+  exercises: Exercise[];
+  createdAt: string;
+  updatedAt: string;
+  isTemplate?: boolean;
+}
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🚀 Como Executar
 
-## Learn more
+1. Instale as dependências:
+```bash
+npm install
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+2. Inicie o projeto:
+```bash
+npx expo start --tunnel
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+3. Use o aplicativo Expo Go no seu dispositivo para escanear o QR Code
 
-## Join the community
+## 📝 Próximos Passos
 
-Join our community of developers creating universal apps.
+- [x] Adicionar categorias de treinos (Peito/Tríceps, Costas/Bíceps, etc.)
+- [x] Adicionar suporte a fotos dos exercícios (câmera e galeria)
+- [ ] Suporte a diferentes unidades de medida:
+  - [ ] Peso em kg/lbs
+  - [ ] Número de placas
+  - [ ] Bandas elásticas
+- [ ] Sistema de templates de treino:
+  - [ ] Salvar treino como template
+  - [ ] Criar novo treino a partir de template
+  - [ ] Gerenciar templates
+- [ ] Melhorias nas anotações:
+  - [ ] Notas por exercício
+  - [ ] Rich text com formatação
+  - [ ] Links para vídeos
+- [ ] Tracking de progresso:
+  - [ ] Histórico de peso/repetições
+  - [ ] Gráficos de evolução
+  - [ ] Recordes pessoais
+- [ ] Melhorias na experiência com fotos:
+  - [ ] Zoom em fotos
+  - [ ] Múltiplas fotos por exercício
+  - [ ] Comparação de fotos (antes/depois)
+  - [ ] Compartilhamento de fotos
+- [ ] Backup e sincronização:
+  - [ ] Exportar/importar dados
+  - [ ] Backup na nuvem
+  - [ ] Sincronização entre dispositivos
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 👨‍💻 Desenvolvimento
+
+Este projeto foi desenvolvido usando boas práticas de programação:
+
+- Código tipado com TypeScript
+- Componentização
+- Hooks personalizados
+- Gerenciamento de estado
+- Tratamento de erros
+- Feedback ao usuário
+- Componentes reutilizáveis
+- Persistência de dados
+- Tratamento de permissões (câmera/galeria)
