@@ -1,0 +1,240 @@
+import React, { useState } from 'react';
+import {
+    FlatList,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { CatalogExercise, exerciseCatalog } from '../constants/exerciseCatalog';
+import { MuscleGroup, muscleGroupLabels } from '../constants/exerciseCategories';
+
+type ExerciseSelectorProps = {
+  visible: boolean;
+  onClose: () => void;
+  onSelectExercise: (exercise: CatalogExercise) => void;
+};
+
+export function ExerciseSelector({ visible, onClose, onSelectExercise }: ExerciseSelectorProps) {
+  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<MuscleGroup | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredExercises = exerciseCatalog.filter(ex => {
+    const matchesMuscleGroup = selectedMuscleGroup
+      ? ex.muscleGroups.includes(selectedMuscleGroup)
+      : true;
+    const matchesSearchTerm = ex.name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesMuscleGroup && matchesSearchTerm;
+  });
+
+  const renderExerciseItem = ({ item }: { item: CatalogExercise }) => (
+    <TouchableOpacity
+      style={styles.exerciseItem}
+      onPress={() => {
+        onSelectExercise(item);
+        onClose();
+      }}
+    >
+      <Image
+        source={{ uri: item.imageUri }}
+        style={styles.exerciseImage}
+      />
+      <View style={styles.exerciseInfo}>
+        <Text style={styles.exerciseName}>{item.name}</Text>
+        <Text style={styles.exerciseDescription} numberOfLines={2}>
+          {item.description}
+        </Text>
+        <View style={styles.muscleGroupTags}>
+          {item.muscleGroups.map(group => (
+            <View key={group} style={styles.muscleGroupTag}>
+              <Text style={styles.muscleGroupText}>
+                {muscleGroupLabels[group]}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Selecionar Exercício</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.searchAndFilterContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Pesquisar por nome..."
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                !selectedMuscleGroup && styles.filterButtonSelected
+              ]}
+              onPress={() => setSelectedMuscleGroup(null)}
+            >
+              <Text style={[
+                styles.filterButtonText,
+                !selectedMuscleGroup && styles.filterButtonTextSelected
+              ]}>
+                Todos
+              </Text>
+            </TouchableOpacity>
+            {Object.entries(muscleGroupLabels).map(([key, label]) => (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.filterButton,
+                  selectedMuscleGroup === key && styles.filterButtonSelected
+                ]}
+                onPress={() => setSelectedMuscleGroup(key as MuscleGroup)}
+              >
+                <Text style={[
+                  styles.filterButtonText,
+                  selectedMuscleGroup === key && styles.filterButtonTextSelected
+                ]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <FlatList
+          data={filteredExercises}
+          renderItem={renderExerciseItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.exerciseList}
+        />
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: '#666',
+  },
+  searchAndFilterContainer: {
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  searchInput: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  filterContainer: {
+    paddingVertical: 8,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    marginHorizontal: 4,
+  },
+  filterButtonSelected: {
+    backgroundColor: '#007AFF',
+  },
+  filterButtonText: {
+    color: '#666',
+  },
+  filterButtonTextSelected: {
+    color: '#fff',
+  },
+  exerciseList: {
+    padding: 16,
+  },
+  exerciseItem: {
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  exerciseImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
+  exerciseInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  exerciseName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  exerciseDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  muscleGroupTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  muscleGroupTag: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 4,
+    marginBottom: 4,
+  },
+  muscleGroupText: {
+    fontSize: 12,
+    color: '#666',
+  },
+});

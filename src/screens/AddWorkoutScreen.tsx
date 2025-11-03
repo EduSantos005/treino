@@ -2,20 +2,22 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CategorySelector } from '../components/CategorySelector';
 import { ExerciseImage } from '../components/ExerciseImage';
+import { ExerciseSelector } from '../components/ExerciseSelector';
 import { SetRow } from '../components/SetRow';
+import { CatalogExercise } from '../constants/exerciseCatalog';
 import { getCategoryLabel } from '../constants/workoutTypes';
 import { storage, Workout, WorkoutCategory } from '../services/storage';
 import { RootStackParamList } from '../types/navigation';
@@ -65,24 +67,22 @@ export default function AddWorkoutScreen() {
   const [workoutName, setWorkoutName] = useState('');
   const [category, setCategory] = useState<WorkoutCategory>('other');
   const [showCategorySelector, setShowCategorySelector] = useState(false);
+  const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [exercises, setExercises] = useState<Exercise[]>([]);
 
-  // Função de debug
-  const handlePress = () => {
-    console.log('Botão pressionado');
-    Alert.alert('Teste', 'Botão funcionando!');
+  const handleSelectExercise = (catalogExercise: CatalogExercise) => {
+    const newExercise: Exercise = {
+      id: Date.now().toString(),
+      name: catalogExercise.name,
+      sets: storage.createDefaultSets(catalogExercise.defaultSets),
+      imageUri: catalogExercise.imageUri,
+      notes: catalogExercise.description
+    };
+    setExercises(current => [...current, newExercise]);
   };
 
   const addExercise = () => {
-    console.log('Adicionando exercício');
-    const newExercise: Exercise = {
-      id: Date.now().toString(),
-      name: '',
-      sets: storage.createDefaultSets(3), // Começa com 3 séries por padrão
-      imageUri: '',
-      notes: ''
-    };
-    setExercises(current => [...current, newExercise]);
+    setShowExerciseSelector(true);
   };
 
   const updateExercise = (id: string, field: keyof Exercise, value: any) => {
@@ -191,6 +191,12 @@ export default function AddWorkoutScreen() {
             onClose={() => setShowCategorySelector(false)}
             onSelect={setCategory}
             selectedCategory={category}
+          />
+
+          <ExerciseSelector
+            visible={showExerciseSelector}
+            onClose={() => setShowExerciseSelector(false)}
+            onSelectExercise={handleSelectExercise}
           />
 
           <Text style={styles.subtitle}>Exercícios</Text>
