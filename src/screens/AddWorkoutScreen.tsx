@@ -70,15 +70,15 @@ export default function AddWorkoutScreen() {
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [exercises, setExercises] = useState<Exercise[]>([]);
 
-  const handleSelectExercise = (catalogExercise: CatalogExercise) => {
-    const newExercise: Exercise = {
-      id: Date.now().toString(),
+  const handleConfirmSelection = (selectedCatalogExercises: CatalogExercise[]) => {
+    const newExercises: Exercise[] = selectedCatalogExercises.map(catalogExercise => ({
+      id: `${Date.now()}-${catalogExercise.id}`,
       name: catalogExercise.name,
       sets: storage.createDefaultSets(catalogExercise.defaultSets),
       imageUri: catalogExercise.imageUri,
       notes: catalogExercise.description
-    };
-    setExercises(current => [...current, newExercise]);
+    }));
+    setExercises(current => [...current, ...newExercises]);
   };
 
   const addExercise = () => {
@@ -196,7 +196,7 @@ export default function AddWorkoutScreen() {
           <ExerciseSelector
             visible={showExerciseSelector}
             onClose={() => setShowExerciseSelector(false)}
-            onSelectExercise={handleSelectExercise}
+            onConfirmSelection={handleConfirmSelection}
           />
 
           <Text style={styles.subtitle}>Exercícios</Text>

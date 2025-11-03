@@ -11,23 +11,41 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Workout, storage } from '../services/storage';
+import { getCategoryLabel } from '../constants/workoutTypes';
+import { Workout, WorkoutLog, storage } from '../services/storage';
 import { RootStackParamList } from '../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
+// Função para calcular a diferença de dias
+const getDaysAgo = (dateString: string) => {
+  const today = new Date();
+  const pastDate = new Date(dateString);
+  today.setHours(0, 0, 0, 0);
+  pastDate.setHours(0, 0, 0, 0);
+  const diffTime = today.getTime() - pastDate.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Hoje';
+  if (diffDays === 1) return 'Ontem';
+  return `Há ${diffDays} dias`;
+};
+
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [history, setHistory] = useState<WorkoutLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadWorkouts = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await storage.getWorkouts();
-      setWorkouts(data);
+      const workoutsData = await storage.getWorkouts();
+      const historyData = await storage.getWorkoutHistory();
+      setWorkouts(workoutsData);
+      setHistory(historyData);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível carregar os treinos');
+      Alert.alert('Erro', 'Não foi possível carregar os dados');
     } finally {
       setLoading(false);
     }
@@ -35,7 +53,7 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadWorkouts();
+      loadData();
     }, [])
   );
 
@@ -54,7 +72,7 @@ export default function HomeScreen() {
           onPress: async () => {
             try {
               await storage.deleteWorkout(workout.id);
-              loadWorkouts();
+              loadData();
             } catch (error) {
               Alert.alert('Erro', 'Não foi possível excluir o treino');
             }
@@ -64,49 +82,65 @@ export default function HomeScreen() {
     );
   };
 
-  const renderWorkoutItem = ({ item }: { item: Workout }) => (
-    <View style={styles.workoutCard}>
-      <View style={styles.workoutInfo}>
-        <Text style={styles.workoutName}>{item.name}</Text>
-        <Text style={styles.workoutDetails}>
-          {item.exercises.length} exercício(s)
-        </Text>
-        {item.exercises.some(ex => ex.imageUri) && (
-          <Text style={styles.workoutDetailsSecondary}>
-            {item.exercises.filter(ex => ex.imageUri).length} exercício(s) com foto
-          </Text>
-        )}
-      </View>
-      
-      <View style={styles.workoutActions}>
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('StartWorkout', { workout: item })}
-          style={[styles.actionButton, styles.startButton]}
-        >
-          <Text style={styles.actionButtonText}>Iniciar Treino</Text>
-        </TouchableOpacity>
+  const renderWorkoutItem = ({ item }: { item: Workout }) => {
+    const lastWorkout = history.find(log => log.workoutId === item.id);
 
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('AddWorkout', { workout: item })}
-          style={[styles.actionButton, styles.editButton]}
-        >
-          <Text style={styles.actionButtonText}>Editar</Text>
-        </TouchableOpacity>
+    return (
+      <View style={styles.workoutCard}>
+        <View style={styles.workoutInfo}>
+          <Text style={styles.workoutName}>{item.name}</Text>
+          <Text style={styles.workoutDetails}>
+            {getCategoryLabel(item.category)} • {item.exercises.length} exercício(s)
+          </Text>
+          {lastWorkout ? (
+            <Text style={styles.lastTrainedText}>
+              Último treino: {getDaysAgo(lastWorkout.completedAt)}
+            </Text>
+          ) : (
+            <Text style={styles.lastTrainedText}>Ainda não treinado</Text>
+          )}
+        </View>
         
-        <TouchableOpacity 
-          onPress={() => handleDeleteWorkout(item)}
-          style={[styles.actionButton, styles.deleteButton]}
-        >
-          <Text style={styles.actionButtonText}>Excluir</Text>
-        </TouchableOpacity>
+        <View style={styles.workoutActions}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('StartWorkout', { workout: item })}
+            style={[styles.actionButton, styles.startButton]}
+          >
+            <Text style={styles.actionButtonText}>Iniciar Treino</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('AddWorkout', { workout: item })}
+            style={[styles.actionButton, styles.editButton]}
+          >
+            <Text style={styles.actionButtonText}>Editar</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            onPress={() => handleDeleteWorkout(item)}
+            style={[styles.actionButton, styles.deleteButton]}
+          >
+            <Text style={styles.actionButtonText}>Excluir</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Meus Treinos</Text>
+        <View>
+          <Text style={styles.title}>Meus Treinos</Text>
+          <View style={styles.headerLinks}>
+            <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
+              <Text style={styles.headerLinkText}>Histórico</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('ExerciseLibrary')}>
+              <Text style={styles.headerLinkText}>Biblioteca</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         <TouchableOpacity 
           style={styles.addButton}
           onPress={() => navigation.navigate('AddWorkout', {})}
@@ -152,6 +186,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  headerLinks: {
+    flexDirection: 'row',
+  },
+  headerLinkText: {
+    fontSize: 16,
+    color: '#007AFF',
+    marginLeft: 16,
   },
   addButton: {
     backgroundColor: '#007AFF',
@@ -173,7 +216,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   workoutInfo: {
-    marginBottom: 10,
+    marginBottom: 15,
   },
   workoutName: {
     fontSize: 18,
@@ -182,15 +225,19 @@ const styles = StyleSheet.create({
   },
   workoutDetails: {
     color: '#666',
+    marginBottom: 8,
   },
-  workoutDetailsSecondary: {
-    color: '#007AFF',
-    fontSize: 12,
-    marginTop: 4,
+  lastTrainedText: {
+    color: '#34C759',
+    fontSize: 14,
+    fontWeight: '500',
   },
   workoutActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 15,
   },
   actionButton: {
     paddingHorizontal: 15,

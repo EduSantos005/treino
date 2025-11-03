@@ -1,12 +1,15 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Dimensions,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -14,25 +17,74 @@ import Carousel from 'react-native-reanimated-carousel';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ExerciseImage } from '../components/ExerciseImage';
 import { SetRow } from '../components/SetRow';
-import { Exercise, Set, Workout } from '../services/storage';
+import { Exercise, Set, Workout, storage } from '../services/storage';
 import { RootStackParamList } from '../types/navigation';
+import * as Haptics from 'expo-haptics';
 
 type RouteParams = {
   workout: Workout;
 };
 
+const REST_TIME_SECONDS = 60;
+
 export default function StartWorkoutScreen() {
   const route = useRoute();
   const { workout } = route.params as RouteParams;
-  const [currentExercise, setCurrentExercise] = useState(0);
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [exercises, setExercises] = useState(workout.exercises);
   const width = Dimensions.get('window').width;
-  const carouselRef = React.useRef<any>(null);
+  const carouselRef = useRef<any>(null);
+  const inputRefs = useRef<{ [key: string]: TextInput }>({});
+
+  // Timer State
+  const [isTimerVisible, setTimerVisible] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(REST_TIME_SECONDS);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startTimer = () => {
+    setTimerSeconds(REST_TIME_SECONDS);
+    setTimerVisible(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+
+    timerIntervalRef.current = setInterval(() => {
+      setTimerSeconds(prev => prev - 1);
+    }, 1000);
+  };
+
+  useEffect(() => {
+    if (timerSeconds === 0) {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      setTimerVisible(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, [timerSeconds]);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
+  }, []);
+
+  const focusNextInput = (exerciseIndex: number, setIndex: number, currentField: 'reps' | 'weight') => {
+    if (currentField === 'reps') {
+      const nextRef = inputRefs.current[`${exerciseIndex}-${setIndex}-weight`];
+      nextRef?.focus();
+    }
+  };
 
   const updateSet = (exerciseIndex: number, setIndex: number, updatedSet: Set) => {
     const newExercises = [...exercises];
+    const oldSet = newExercises[exerciseIndex].sets[setIndex];
     newExercises[exerciseIndex].sets[setIndex] = updatedSet;
     setExercises(newExercises);
+
+    // Se a série está sendo marcada como completa (e não desmarcada)
+    if (updatedSet.isCompleted && !oldSet.isCompleted) {
+      startTimer();
+    }
   };
 
   const isExerciseCompleted = (exercise: Exercise) => {
@@ -46,98 +98,136 @@ export default function StartWorkoutScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   
   const finishWorkout = () => {
+    const completedWorkout: Workout = {
+      ...workout,
+      exercises: exercises,
+    };
+
+    const saveAndExit = async () => {
+      try {
+        await storage.updateWorkout(completedWorkout);
+        await storage.saveWorkoutToHistory(completedWorkout);
+        Alert.alert(
+          'Treino Salvo!',
+          'Seu progresso foi salvo com sucesso.',
+          [{ 
+            text: 'OK',
+            onPress: () => navigation.navigate('Home')
+          }]
+        );
+      } catch (error) {
+        Alert.alert('Erro', 'Não foi possível salvar o treino.');
+      }
+    };
+
     if (isWorkoutCompleted()) {
       Alert.alert(
         'Parabéns! 🎉',
-        'Você completou todos os exercícios do treino!',
-        [{ 
-          text: 'OK',
-          onPress: () => navigation.navigate('Home')
-        }]
+        'Você completou o treino. Deseja salvar seu progresso?',
+        [
+          { text: 'Não Salvar', style: 'cancel', onPress: () => navigation.navigate('Home') },
+          { 
+            text: 'Salvar e Sair', 
+            onPress: saveAndExit
+          }
+        ]
       );
     } else {
       Alert.alert(
-        'Atenção',
-        'Ainda há exercícios não completados. Deseja finalizar mesmo assim?',
+        'Encerrar Treino?',
+        'Você ainda tem séries pendentes. O que deseja fazer?',
         [
-          { text: 'Não', style: 'cancel' },
           { 
-            text: 'Sim', 
-            style: 'destructive',
-            onPress: () => navigation.navigate('Home')
-          }
+            text: 'Salvar e Sair', 
+            onPress: saveAndExit
+          },
+          { 
+            text: 'Sair sem Salvar', 
+            style: 'destructive', 
+            onPress: () => navigation.navigate('Home') 
+          },
+          { text: 'Continuar Treino', style: 'cancel' },
         ]
       );
     }
   };
 
-  const renderExercise = ({ item: exercise, index }: { item: Exercise; index: number }) => {
+  const renderExercise = ({ item: exercise, index: exerciseIndex }: { item: Exercise; index: number }) => {
     const completed = isExerciseCompleted(exercise);
 
     return (
-      <ScrollView 
-        style={styles.exerciseCard}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.exerciseCardContent}
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={140}
       >
-        <View style={styles.exerciseHeader}>
-          <Text style={styles.exerciseName}>{exercise.name}</Text>
-          {completed && <Text style={styles.completedBadge}>✓</Text>}
-        </View>
-
-        {exercise.imageUri && (
-          <View style={styles.imageContainer}>
-            <ExerciseImage
-              imageUri={exercise.imageUri}
-            />
+        <ScrollView 
+          style={styles.exerciseCard}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.exerciseCardContent}
+        >
+          <View style={styles.exerciseHeader}>
+            <Text style={styles.exerciseName}>{exercise.name}</Text>
+            {completed && <Text style={styles.completedBadge}>✓</Text>}
           </View>
-        )}
 
-        <View style={styles.setsContainer}>
-          {exercise.sets.map((set, setIndex) => (
-            <SetRow
-              key={set.number}
-              set={set}
-              onUpdate={(updatedSet) => updateSet(index, setIndex, updatedSet)}
-              showDelete={false}
-            />
-          ))}
-        </View>
+          {exercise.imageUri && (
+            <View style={styles.imageContainer}>
+              <ExerciseImage
+                imageUri={exercise.imageUri}
+              />
+            </View>
+          )}
 
-        <View style={styles.navigationContainer}>
-          <TouchableOpacity
-            style={[styles.navButton, index === 0 && styles.navButtonDisabled]}
-            onPress={() => {
-              if (index > 0) {
-                carouselRef.current?.scrollTo({ index: index - 1 });
-              }
-            }}
-            disabled={index === 0}
-          >
-            <Text style={[styles.navButtonText, index === 0 && styles.navButtonTextDisabled]}>
-              ← Voltar Exerc.
+          <View style={styles.setsContainer}>
+            {exercise.sets.map((set, setIndex) => (
+              <SetRow
+                key={set.number}
+                set={set}
+                onUpdate={(updatedSet) => updateSet(exerciseIndex, setIndex, updatedSet)}
+                showDelete={false}
+                repsRef={(ref) => inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref}
+                weightRef={(ref) => inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref}
+                onSubmitReps={() => focusNextInput(exerciseIndex, setIndex, 'reps')}
+              />
+            ))}
+          </View>
+
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={[styles.navButton, exerciseIndex === 0 && styles.navButtonDisabled]}
+              onPress={() => {
+                if (exerciseIndex > 0) {
+                  carouselRef.current?.scrollTo({ index: exerciseIndex - 1 });
+                }
+              }}
+              disabled={exerciseIndex === 0}
+            >
+              <Text style={[styles.navButtonText, exerciseIndex === 0 && styles.navButtonTextDisabled]}>
+                ← Voltar Exerc.
+              </Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.progressText}>
+              {exerciseIndex + 1} de {exercises.length}
             </Text>
-          </TouchableOpacity>
-          
-          <Text style={styles.progressText}>
-            {index + 1} de {exercises.length}
-          </Text>
-          
-          <TouchableOpacity
-            style={[styles.navButton, index === exercises.length - 1 && styles.navButtonDisabled]}
-            onPress={() => {
-              if (index < exercises.length - 1) {
-                carouselRef.current?.scrollTo({ index: index + 1 });
-              }
-            }}
-            disabled={index === exercises.length - 1}
-          >
-            <Text style={[styles.navButtonText, index === exercises.length - 1 && styles.navButtonTextDisabled]}>
-              Próx. Exerc. →
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            
+            <TouchableOpacity
+              style={[styles.navButton, exerciseIndex === exercises.length - 1 && styles.navButtonDisabled]}
+              onPress={() => {
+                if (exerciseIndex < exercises.length - 1) {
+                  carouselRef.current?.scrollTo({ index: exerciseIndex + 1 });
+                }
+              }}
+              disabled={exerciseIndex === exercises.length - 1}
+            >
+              <Text style={[styles.navButtonText, exerciseIndex === exercises.length - 1 && styles.navButtonTextDisabled]}>
+                Próx. Exerc. →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   };
 
@@ -152,7 +242,7 @@ export default function StartWorkoutScreen() {
           ]}
           onPress={finishWorkout}
         >
-          <Text style={styles.finishButtonText}>Finalizar Treino</Text>
+          <Text style={styles.finishButtonText}>Encerrar treino</Text>
         </TouchableOpacity>
       </View>
 
@@ -165,7 +255,7 @@ export default function StartWorkoutScreen() {
             height={Dimensions.get('window').height - 140}
             data={exercises}
             defaultIndex={0}
-            onSnapToItem={(index) => setCurrentExercise(index)}
+            onSnapToItem={(index) => setCurrentExerciseIndex(index)}
             renderItem={renderExercise}
             mode="parallax"
             modeConfig={{
@@ -175,6 +265,21 @@ export default function StartWorkoutScreen() {
           />
         )}
       </View>
+
+      {isTimerVisible && (
+        <View style={styles.timerContainer}>
+          <Text style={styles.timerText}>Descanso: {timerSeconds}s</Text>
+          <TouchableOpacity 
+            style={styles.skipButton}
+            onPress={() => {
+              if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+              setTimerVisible(false);
+            }}
+          >
+            <Text style={styles.skipButtonText}>Pular</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -288,5 +393,32 @@ const styles = StyleSheet.create({
   },
   navButtonTextDisabled: {
     color: '#8E8E93',
+  },
+  timerContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 10,
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  timerText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  skipButton: {
+    backgroundColor: '#555',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  skipButtonText: {
+    color: 'white',
+    fontWeight: '600',
   },
 });

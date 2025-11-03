@@ -5,75 +5,56 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 ## 🏋️‍♂️ Funcionalidades
 
 ### Gerenciamento de Treinos
-- ✅ Criar novos treinos
-- ✅ Visualizar lista de treinos
+- ✅ Criar novos treinos a partir de um catálogo de exercícios
+- ✅ Visualizar lista de treinos com categoria e quantidade de exercícios
 - ✅ Editar treinos existentes
 - ✅ Excluir treinos
 - ✅ Armazenamento local persistente
-- ✅ Categorização de treinos
 
 ### Gestão de Exercícios
-- ✅ Adicionar múltiplos exercícios a um treino
-- ✅ Selecionar exercícios de um catálogo pré-definido
-- ✅ Filtrar exercícios por grupo muscular
-- ✅ Pesquisar exercícios por nome
-- ✅ Preenchimento automático de nome, imagem, séries e notas ao selecionar do catálogo
-- ✅ Remover exercícios específicos
-- ✅ Para cada exercício:
-  - Nome do exercício
-  - Número de séries
-  - Número de repetições
-  - Peso em kg
-  - Foto do exercício (câmera ou galeria)
+- ✅ Adicionar múltiplos exercícios a um treino de uma só vez
+- ✅ Selecionar exercícios de um catálogo com busca por nome e filtro por grupo muscular
+- ✅ Preenchimento automático de nome, imagem e séries ao selecionar do catálogo
 
-### Interface do Usuário
+### Execução de Treino
+- ✅ Registrar progresso em tempo real (reps e peso)
+- ✅ Salvar o progresso para referência futura (sobrecarga progressiva)
+- ✅ Marcar séries como concluídas com feedback visual e tátil (vibração)
+- ✅ Timer de descanso automático iniciado após cada série
+- ✅ Navegação fluida entre os exercícios do treino (carrossel)
+- ✅ Alertas de confirmação inteligentes para evitar perda de dados
+
+### Interface e Usabilidade
 - ✅ Design moderno e intuitivo
-- ✅ Navegação fluida entre campos
-- ✅ Validação de dados
-- ✅ Feedback visual para ações
-- ✅ Suporte a gestos
-- ✅ Adaptação automática ao teclado
-- ✅ Visualização de fotos dos exercícios
-- ✅ Indicador de exercícios com fotos na lista
-
-### Usabilidade
-- ✅ Navegação automática entre campos usando Return/Enter
-- ✅ Limitação inteligente de caracteres em campos numéricos
-- ✅ Teclado numérico para campos apropriados
-- ✅ Confirmação para ações importantes
-- ✅ Mensagens de feedback claras
-- ✅ Opção de tirar foto ou escolher da galeria
-- ✅ Edição de fotos antes de salvar
+- ✅ Navegação fluida entre campos com o teclado (botão "Next")
+- ✅ Ajuste automático da tela para o teclado não cobrir os campos
+- ✅ Validação de dados e mensagens de feedback claras
+- ✅ Suporte a gestos no carrossel de exercícios
 
 ## 🛠 Tecnologias Utilizadas
 
 - **React Native**: Framework para desenvolvimento mobile
-- **Expo**: Plataforma de desenvolvimento
+- **Expo**: Plataforma de desenvolvimento (SDK 50+)
 - **React Navigation**: Sistema de navegação
 - **AsyncStorage**: Armazenamento local persistente
 - **TypeScript**: Tipagem estática
-- **React Hooks**: Gerenciamento de estado
-- **Safe Area Context**: Adaptação a diferentes dispositivos
-- **Expo Image Picker**: Captura e seleção de imagens
+- **Expo Haptics**: Feedback tátil (vibração)
 
 ## 📱 Telas
 
 ### Tela Inicial (Home)
-- Lista de treinos cadastrados
-- Botão para adicionar novo treino
-- Opções de editar e excluir para cada treino
-- Estado vazio com mensagem apropriada
-- Indicador de exercícios com fotos
-- Categorias dos treinos
+- Lista de treinos cadastrados exibindo: Nome, Categoria e Qtd. de exercícios.
+- Opções de iniciar, editar e excluir para cada treino.
 
 ### Tela de Adicionar/Editar Treino
-- Formulário intuitivo
-- Campos otimizados para entrada de dados
-- Navegação automática entre campos
-- Validações em tempo real
-- Suporte a fotos dos exercícios
-- Seleção de categoria do treino
-- Modal de seleção de exercícios com busca e filtro
+- Formulário para nome e categoria do treino.
+- Modal de seleção de exercícios com suporte à seleção múltipla, busca e filtro.
+
+### Tela de Execução de Treino
+- Interface focada no exercício atual, com navegação em carrossel.
+- Inputs editáveis para registrar repetições e pesos de cada série.
+- Botão para marcar série como concluída, com mudança de estado visual e feedback tátil.
+- Timer de descanso automático com opção de "Pular".
 
 ## 💾 Armazenamento
 
@@ -82,12 +63,18 @@ Os dados são persistidos localmente usando AsyncStorage com a seguinte estrutur
 ```typescript
 type WorkoutCategory = 'chest-triceps' | 'back-biceps' | 'legs' | 'shoulders' | 'other';
 
+interface Set {
+  number: number;
+  reps: string;
+  weight: string;
+  weightUnit: 'kg' | 'plates' | 'lbs';
+  isCompleted?: boolean;
+}
+
 interface Exercise {
   id: string;
   name: string;
-  sets: string;
-  reps: string;
-  weight: string;
+  sets: Set[];
   imageUri?: string;
   notes?: string;
 }
@@ -99,7 +86,6 @@ interface Workout {
   exercises: Exercise[];
   createdAt: string;
   updatedAt: string;
-  isTemplate?: boolean;
 }
 ```
 
@@ -110,39 +96,27 @@ interface Workout {
 npm install
 ```
 
-2. Inicie o projeto:
+2. Inicie o projeto (use `--tunnel` se o celular não estiver na mesma rede Wi-Fi):
 ```bash
-npx expo start --tunnel
+npx expo start
 ```
 
-3. Use o aplicativo Expo Go no seu dispositivo para escanear o QR Code
+3. Use o aplicativo Expo Go no seu dispositivo para escanear o QR Code.
 
 ## 📝 Próximos Passos
 
-- [ ] Adicionar mais exercícios ao catálogo
-- [ ] Adicionar mais detalhes como instruções de execução
-- [ ] Implementar categorização por equipamento necessário
-- [ ] Suporte a diferentes unidades de medida:
-  - [ ] Peso em kg/lbs
-  - [ ] Número de placas
-  - [ ] Bandas elásticas
-- [ ] Sistema de templates de treino:
-  - [ ] Salvar treino como template
-  - [ ] Criar novo treino a partir de template
-  - [ ] Gerenciar templates
-- [ ] Melhorias nas anotações:
-  - [ ] Notas por exercício
-  - [ ] Rich text com formatação
-  - [ ] Links para vídeos
+- [ ] Criação de exercicio (Para exercício não cadastrado no app)
+  - [ ] Tela no Sistema aonde o usuário pode consultar os exercícios "Padrão" já criados.
+
+
 - [ ] Tracking de progresso:
   - [ ] Histórico de peso/repetições
   - [ ] Gráficos de evolução
   - [ ] Recordes pessoais
-- [ ] Melhorias na experiência com fotos:
-  - [ ] Zoom em fotos
-  - [ ] Múltiplas fotos por exercício
-  - [ ] Comparação de fotos (antes/depois)
-  - [ ] Compartilhamento de fotos
+- [ ] Adicionar mais exercícios ao catálogo
+- [ ] Adicionar imagens de um meio legal
+- [ ] Melhorias nas anotações:
+  - [ ] Links para vídeos
 - [ ] Backup e sincronização:
   - [ ] Exportar/importar dados
   - [ ] Backup na nuvem

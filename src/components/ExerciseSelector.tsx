@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     FlatList,
     Image,
     Modal,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -12,18 +11,40 @@ import {
 } from 'react-native';
 import { CatalogExercise, exerciseCatalog } from '../constants/exerciseCatalog';
 import { MuscleGroup, muscleGroupLabels } from '../constants/exerciseCategories';
+import { storage } from '../services/storage';
 
 type ExerciseSelectorProps = {
   visible: boolean;
   onClose: () => void;
-  onSelectExercise: (exercise: CatalogExercise) => void;
+  onConfirmSelection: (exercises: CatalogExercise[]) => void;
 };
 
-export function ExerciseSelector({ visible, onClose, onSelectExercise }: ExerciseSelectorProps) {
+export function ExerciseSelector({ visible, onClose, onConfirmSelection }: ExerciseSelectorProps) {
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<MuscleGroup | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedExercises, setSelectedExercises] = useState<CatalogExercise[]>([]);
+  const [allExercises, setAllExercises] = useState<CatalogExercise[]>([]);
 
-  const filteredExercises = exerciseCatalog.filter(ex => {
+  useEffect(() => {
+    if (visible) {
+      const loadAllExercises = async () => {
+        const customExercises = await storage.getCustomExercises();
+        const combined = [...exerciseCatalog, ...customExercises].sort((a, b) => a.name.localeCompare(b.name));
+        setAllExercises(combined);
+      };
+      loadAllExercises();
+    }
+  }, [visible]);
+
+  const handleToggleExercise = (exercise: CatalogExercise) => {
+    setSelectedExercises(prev =>
+      prev.find(e => e.id === exercise.id)
+        ? prev.filter(e => e.id !== exercise.id)
+        : [...prev, exercise]
+    );
+  };
+
+  const filteredExercises = allExercises.filter(ex => {
     const matchesMuscleGroup = selectedMuscleGroup
       ? ex.muscleGroups.includes(selectedMuscleGroup)
       : true;
@@ -31,35 +52,36 @@ export function ExerciseSelector({ visible, onClose, onSelectExercise }: Exercis
     return matchesMuscleGroup && matchesSearchTerm;
   });
 
-  const renderExerciseItem = ({ item }: { item: CatalogExercise }) => (
-    <TouchableOpacity
-      style={styles.exerciseItem}
-      onPress={() => {
-        onSelectExercise(item);
-        onClose();
-      }}
-    >
-      <Image
-        source={{ uri: item.imageUri }}
-        style={styles.exerciseImage}
-      />
-      <View style={styles.exerciseInfo}>
-        <Text style={styles.exerciseName}>{item.name}</Text>
-        <Text style={styles.exerciseDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
-        <View style={styles.muscleGroupTags}>
-          {item.muscleGroups.map(group => (
-            <View key={group} style={styles.muscleGroupTag}>
-              <Text style={styles.muscleGroupText}>
-                {muscleGroupLabels[group]}
-              </Text>
-            </View>
-          ))}
+  const renderExerciseItem = ({ item }: { item: CatalogExercise }) => {
+    const isSelected = selectedExercises.some(e => e.id === item.id);
+    return (
+      <TouchableOpacity
+        style={[styles.exerciseItem, isSelected && styles.exerciseItemSelected]}
+        onPress={() => handleToggleExercise(item)}
+      >
+        <Image
+          source={{ uri: item.imageUri }}
+          style={styles.exerciseImage}
+        />
+        <View style={styles.exerciseInfo}>
+          <Text style={styles.exerciseName}>{item.name}</Text>
+          <Text style={styles.exerciseDescription} numberOfLines={2}>
+            {item.description}
+          </Text>
+          <View style={styles.muscleGroupTags}>
+            {item.muscleGroups.map(group => (
+              <View key={group} style={styles.muscleGroupTag}>
+                <Text style={styles.muscleGroupText}>
+                  {muscleGroupLabels[group]}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+        {isSelected && <View style={styles.selectionIndicator} />}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <Modal
@@ -82,7 +104,7 @@ export function ExerciseSelector({ visible, onClose, onSelectExercise }: Exercis
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.filterContainer}>
             <TouchableOpacity
               style={[
                 styles.filterButton,
@@ -114,7 +136,7 @@ export function ExerciseSelector({ visible, onClose, onSelectExercise }: Exercis
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
         </View>
 
         <FlatList
@@ -123,6 +145,21 @@ export function ExerciseSelector({ visible, onClose, onSelectExercise }: Exercis
           keyExtractor={item => item.id}
           contentContainerStyle={styles.exerciseList}
         />
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.confirmButton}
+            onPress={() => {
+              onConfirmSelection(selectedExercises);
+              setSelectedExercises([]); // Limpa a seleção para a próxima vez
+              onClose();
+            }}
+          >
+            <Text style={styles.confirmButtonText}>
+              Adicionar Selecionados ({selectedExercises.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </Modal>
   );
@@ -138,6 +175,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
+    paddingTop: 40, // Adicionado para descer o conteúdo
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
@@ -166,14 +204,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   filterContainer: {
-    paddingVertical: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingVertical: 4,
   },
   filterButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#f0f0f0',
-    marginHorizontal: 4,
+    margin: 4,
   },
   filterButtonSelected: {
     backgroundColor: '#007AFF',
@@ -201,6 +241,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  exerciseItemSelected: {
+    borderColor: '#007AFF',
+    borderWidth: 2,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   exerciseImage: {
     width: 80,
@@ -236,5 +291,21 @@ const styles = StyleSheet.create({
   muscleGroupText: {
     fontSize: 12,
     color: '#666',
+  },
+  footer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  confirmButton: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

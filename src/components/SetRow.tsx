@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import {
     StyleSheet,
@@ -15,16 +16,26 @@ interface SetRowProps {
   onUpdate: (updatedSet: Set) => void;
   onDelete?: () => void;
   showDelete?: boolean;
+  repsRef?: (ref: TextInput) => void;
+  weightRef?: (ref: TextInput) => void;
+  onSubmitReps?: () => void;
 }
 
-type WeightUnit = keyof typeof WEIGHT_UNITS;
-
-export function SetRow({ set, onUpdate, onDelete, showDelete = true }: SetRowProps) {
+export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, weightRef, onSubmitReps }: SetRowProps) {
   const [showUnitSelector, setShowUnitSelector] = useState(false);
+
+  const handleComplete = () => {
+    const isCompleting = !set.isCompleted;
+    if (isCompleting) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    onUpdate({ ...set, isCompleted: isCompleting });
+  };
+
   return (
-    <View style={styles.setRow}>
+    <View style={[styles.setRow, set.isCompleted && styles.setRowCompleted]}>
       <View style={styles.setHeader}>
-        <Text style={styles.setNumber}>Série {set.number}</Text>
+        <Text style={[styles.setNumber, set.isCompleted && styles.textCompleted]}>Série {set.number}</Text>
         {showDelete && onDelete && (
           <TouchableOpacity
             style={styles.deleteButton}
@@ -36,32 +47,47 @@ export function SetRow({ set, onUpdate, onDelete, showDelete = true }: SetRowPro
       </View>
       <View style={styles.inputs}>
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Reps</Text>
+          <Text style={[styles.label, set.isCompleted && styles.textCompleted]}>Reps</Text>
           <TextInput
-            style={styles.input}
+            ref={repsRef}
+            style={[
+              styles.input,
+              set.isCompleted && styles.inputCompleted
+            ]}
             value={set.reps}
             onChangeText={(value) => onUpdate({ ...set, reps: value })}
             keyboardType="numeric"
             maxLength={3}
             placeholder="12"
+            returnKeyType="next"
+            onSubmitEditing={onSubmitReps}
+            blurOnSubmit={false}
+            editable={!set.isCompleted}
           />
         </View>
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Peso</Text>
+          <Text style={[styles.label, set.isCompleted && styles.textCompleted]}>Peso</Text>
           <View style={styles.weightContainer}>
             <TextInput
-              style={[styles.input, styles.weightInput]}
+              ref={weightRef}
+              style={[
+                styles.input, 
+                styles.weightInput, 
+                set.isCompleted && styles.inputCompleted
+              ]}
               value={set.weight}
               onChangeText={(value) => onUpdate({ ...set, weight: value })}
               keyboardType="numeric"
               maxLength={5}
               placeholder="20"
+              returnKeyType="done"
+              editable={!set.isCompleted}
             />
             <TouchableOpacity 
               style={styles.unitButton}
-              onPress={() => setShowUnitSelector(true)}
+              onPress={() => !set.isCompleted && setShowUnitSelector(true)}
             >
-              <Text style={styles.unitButtonText}>
+              <Text style={[styles.unitButtonText, set.isCompleted && styles.textCompleted]}>
                 {set.weightUnit.toUpperCase()}
               </Text>
             </TouchableOpacity>
@@ -82,11 +108,9 @@ export function SetRow({ set, onUpdate, onDelete, showDelete = true }: SetRowPro
             styles.completeButton,
             set.isCompleted && styles.completedButton
           ]}
-          onPress={() => onUpdate({ ...set, isCompleted: !set.isCompleted })}
+          onPress={handleComplete}
         >
-          <Text style={styles.completeButtonText}>
-            {set.isCompleted ? '✓' : '◯'}
-          </Text>
+          <Text style={styles.completeButtonText}>✓</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -126,14 +150,22 @@ const styles = StyleSheet.create({
   },
   setRow: {
     marginVertical: 8,
-    padding: 8,
+    padding: 12,
     backgroundColor: '#f8f8f8',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  setRowCompleted: {
+    backgroundColor: '#e8f5e9', // Verde claro
+    borderColor: '#34C759',
   },
   setNumber: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+  },
+  textCompleted: {
+    color: '#9e9e9e',
   },
   inputs: {
     flexDirection: 'row',
@@ -153,8 +185,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 6,
-    padding: 8,
+    padding: 10,
     textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  inputCompleted: {
+    backgroundColor: '#f5f5f5',
+    color: '#9e9e9e',
+    textDecorationLine: 'line-through',
   },
   weightContainer: {
     flexDirection: 'row',
@@ -162,22 +201,25 @@ const styles = StyleSheet.create({
   },
   weightInput: {
     flex: 1,
-    marginRight: 4,
   },
   completeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#eee',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
+    borderWidth: 2,
+    borderColor: '#E5E5EA',
   },
   completedButton: {
     backgroundColor: '#34C759',
+    borderColor: '#34C759',
   },
   completeButtonText: {
-    fontSize: 18,
-    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#34C759',
   },
 });

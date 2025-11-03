@@ -1,25 +1,28 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CatalogExercise } from '../constants/exerciseCatalog';
 import { WEIGHT_UNITS } from '../constants/workoutTypes';
 
 const WORKOUTS_KEY = '@app_treino:workouts';
+const WORKOUT_HISTORY_KEY = '@app_treino:workout_history';
+const CUSTOM_EXERCISES_KEY = '@app_treino:custom_exercises';
 
 export type WorkoutCategory = 'chest-triceps' | 'back-biceps' | 'legs' | 'shoulders' | 'other';
 
 export type WeightUnit = keyof typeof WEIGHT_UNITS;
 
 export interface Set {
-  number: number;        // Número da série
-  reps: string;         // Número de repetições
-  weight: string;       // Peso
-  weightUnit: WeightUnit; // Unidade de medida
-  isCompleted?: boolean; // Para marcar quando completar a série
-  notes?: string;       // Observações adicionais (ex: "cada lado", "Banco no 5")
+  number: number;
+  reps: string;
+  weight: string;
+  weightUnit: WeightUnit;
+  isCompleted?: boolean;
+  notes?: string;
 }
 
 export interface Exercise {
   id: string;
   name: string;
-  sets: Set[];         // Array de séries em vez de campos separados
+  sets: Set[];
   imageUri?: string;
   notes?: string;
 }
@@ -32,6 +35,14 @@ export interface Workout {
   createdAt: string;
   updatedAt: string;
   isTemplate?: boolean;
+}
+
+export interface WorkoutLog {
+  logId: string;
+  workoutId: string;
+  name: string;
+  completedAt: string;
+  exercises: Exercise[];
 }
 
 const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
@@ -116,7 +127,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
     category: 'back-biceps',
     exercises: [
       {
-        id: '1',
+        id: '8',
         name: 'Puxada alta',
         imageUri: 'https://static.strengthlevel.com/images/illustrations/lat-pulldown-1000x1000.jpg',
         sets: [
@@ -126,7 +137,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '2',
+        id: '9',
         name: 'Remada baixa',
         imageUri: 'https://static.strengthlevel.com/images/illustrations/seated-cable-row-1000x1000.jpg',
         sets: [
@@ -136,7 +147,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '3',
+        id: '10',
         name: 'Puxada invertida máquina',
         imageUri: 'https://static.strengthlevel.com/images/exercises/machine-reverse-fly/machine-reverse-fly-800.avif',
         sets: [
@@ -146,7 +157,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '4',
+        id: '11',
         name: 'Pull Down na Polia',
         imageUri: 'https://static.strengthlevel.com/images/illustrations/straight-arm-pulldown-1000x1000.jpg',
         sets: [
@@ -156,7 +167,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '5',
+        id: '12',
         name: 'Bíceps Inclinado com Halteres',
         imageUri: 'https://static.strengthlevel.com/images/illustrations/incline-dumbbell-curl-1000x1000.jpg',
         sets: [
@@ -166,7 +177,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '6',
+        id: '13',
         name: 'Bíceps Scott',
         imageUri: 'https://static.strengthlevel.com/images/illustrations/preacher-curl-1000x1000.jpg',
         sets: [
@@ -182,7 +193,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
     category: 'legs',
     exercises: [
       {
-        id: '1',
+        id: '14',
         name: 'Abdutora',
         imageUri: 'https://static.strengthlevel.com/images/exercises/hip-abduction/hip-abduction-800.avif',
         sets: [
@@ -192,7 +203,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '2',
+        id: '15',
         name: 'Adutora',
         imageUri: 'https://static.strengthlevel.com/images/exercises/hip-adduction/hip-adduction-800.avif',
         sets: [
@@ -202,7 +213,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '3',
+        id: '16',
         name: 'Leg Articulado',
         imageUri: 'https://static.strengthlevel.com/images/exercises/single-leg-press/single-leg-press-800.avif',
         sets: [
@@ -212,7 +223,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '4',
+        id: '17',
         name: 'Passada com halteres',
         imageUri: 'https://static.strengthlevel.com/images/illustrations/dumbbell-lunge-1000x1000.jpg',
         sets: [
@@ -222,7 +233,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '5',
+        id: '18',
         name: 'Extensora',
         imageUri: 'https://static.strengthlevel.com/images/illustrations/leg-extension-1000x1000.jpg',
         sets: [
@@ -232,7 +243,7 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '6',
+        id: '19',
         name: 'Mesa Flexora',
         imageUri: 'https://static.strengthlevel.com/images/illustrations/lying-leg-curl-1000x1000.jpg',
         sets: [
@@ -246,43 +257,37 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
 ];
 
 export const storage = {
-  async initializeDefaultWorkouts(): Promise<void> {
+  async seedDefaultWorkouts(): Promise<void> {
     try {
       const existingWorkouts = await this.getWorkouts();
-      
-      // Só adiciona os treinos padrão se não houver nenhum treino salvo
-      if (existingWorkouts.length === 0) {
-        const defaultWorkoutsWithIds = DEFAULT_WORKOUTS.map((workout, index) => ({
-          ...workout,
-          id: `template_${index + 1}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isTemplate: true, // Marca como template para identificar que é um treino padrão
-        }));
-
-        await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(defaultWorkoutsWithIds));
+      if (existingWorkouts.length > 0) {
+        return; // Não faz nada se já existirem treinos
       }
+
+      const newWorkouts = DEFAULT_WORKOUTS.map((workout, index) => ({
+        ...workout,
+        id: `default_${index}_${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+
+      await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(newWorkouts));
+
     } catch (error) {
-      console.error('Erro ao inicializar treinos padrão:', error);
-      throw new Error('Não foi possível inicializar os treinos padrão');
+      console.error('Erro ao criar treinos padrão:', error);
     }
   },
+
   async saveWorkout(workout: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>): Promise<Workout> {
     try {
       const workouts = await this.getWorkouts();
-      
       const newWorkout: Workout = {
         ...workout,
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-
-      await AsyncStorage.setItem(
-        WORKOUTS_KEY,
-        JSON.stringify([...workouts, newWorkout])
-      );
-
+      await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify([...workouts, newWorkout]));
       return newWorkout;
     } catch (error) {
       console.error('Erro ao salvar treino:', error);
@@ -308,7 +313,6 @@ export const storage = {
           ? { ...workout, updatedAt: new Date().toISOString() }
           : w
       );
-
       await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(updatedWorkouts));
     } catch (error) {
       console.error('Erro ao atualizar treino:', error);
@@ -327,7 +331,92 @@ export const storage = {
     }
   },
 
-  // Helper para criar séries padrão
+  async saveWorkoutToHistory(workout: Workout, completedAt?: string): Promise<void> {
+    try {
+      const history = await this.getWorkoutHistory();
+      const newLog: WorkoutLog = {
+        logId: Date.now().toString(),
+        workoutId: workout.id,
+        name: workout.name,
+        completedAt: completedAt || new Date().toISOString(),
+        exercises: workout.exercises,
+      };
+      await AsyncStorage.setItem(WORKOUT_HISTORY_KEY, JSON.stringify([newLog, ...history]));
+    } catch (error) {
+      console.error('Erro ao salvar no histórico:', error);
+      throw new Error('Não foi possível salvar o histórico de treino');
+    }
+  },
+
+  async getWorkoutHistory(): Promise<WorkoutLog[]> {
+    try {
+      const data = await AsyncStorage.getItem(WORKOUT_HISTORY_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (error) {
+      console.error('Erro ao buscar histórico de treinos:', error);
+      return [];
+    }
+  },
+
+  async deleteWorkoutFromHistory(logId: string): Promise<void> {
+    try {
+      const history = await this.getWorkoutHistory();
+      const updatedHistory = history.filter((log) => log.logId !== logId);
+      await AsyncStorage.setItem(WORKOUT_HISTORY_KEY, JSON.stringify(updatedHistory));
+    } catch (error) {
+      console.error('Erro ao excluir do histórico:', error);
+      throw new Error('Não foi possível excluir o registro do histórico');
+    }
+  },
+
+  async getCustomExercises(): Promise<CatalogExercise[]> {
+    try {
+      const data = await AsyncStorage.getItem(CUSTOM_EXERCISES_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (error) {
+      console.error('Erro ao buscar exercícios personalizados:', error);
+      return [];
+    }
+  },
+
+  async saveCustomExercise(exercise: Omit<CatalogExercise, 'id'>): Promise<void> {
+    try {
+      const customExercises = await this.getCustomExercises();
+      const newExercise: CatalogExercise = {
+        ...exercise,
+        id: `custom_${Date.now()}`,
+      };
+      await AsyncStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify([...customExercises, newExercise]));
+    } catch (error) {
+      console.error('Erro ao salvar exercício personalizado:', error);
+      throw new Error('Não foi possível salvar o exercício personalizado');
+    }
+  },
+
+  async updateCustomExercise(exerciseToUpdate: CatalogExercise): Promise<void> {
+    try {
+      const customExercises = await this.getCustomExercises();
+      const updatedExercises = customExercises.map(ex => 
+        ex.id === exerciseToUpdate.id ? exerciseToUpdate : ex
+      );
+      await AsyncStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify(updatedExercises));
+    } catch (error) {
+      console.error('Erro ao atualizar exercício personalizado:', error);
+      throw new Error('Não foi possível atualizar o exercício personalizado');
+    }
+  },
+
+  async deleteCustomExercise(exerciseId: string): Promise<void> {
+    try {
+      const customExercises = await this.getCustomExercises();
+      const updatedExercises = customExercises.filter(ex => ex.id !== exerciseId);
+      await AsyncStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify(updatedExercises));
+    } catch (error) {
+      console.error('Erro ao excluir exercício personalizado:', error);
+      throw new Error('Não foi possível excluir o exercício personalizado');
+    }
+  },
+
   createDefaultSets(numberOfSets: number): Set[] {
     return Array.from({ length: numberOfSets }, (_, index) => ({
       number: index + 1,
