@@ -1,4 +1,4 @@
-import { WorkoutCategory } from '../services/storage';
+export type WorkoutCategory = 'chest-triceps' | 'back-biceps' | 'legs' | 'shoulders' | 'other';
 
 export const WORKOUT_CATEGORIES: { [key in WorkoutCategory]: string } = {
   'chest-triceps': 'Peito e Tríceps',
@@ -14,8 +14,11 @@ export const WEIGHT_UNITS = {
   lbs: 'Libras (lbs)'
 } as const;
 
-export const getCategoryLabel = (category: WorkoutCategory): string => {
-  return WORKOUT_CATEGORIES[category];
+export const getCategoryLabel = (category: WorkoutCategory | string): string => {
+  if (WORKOUT_CATEGORIES[category as WorkoutCategory]) {
+    return WORKOUT_CATEGORIES[category as WorkoutCategory];
+  }
+  return category || 'Desconhecido';
 };
 
 export const getWeightUnitLabel = (unit: keyof typeof WEIGHT_UNITS): string => {

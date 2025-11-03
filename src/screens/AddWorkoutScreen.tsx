@@ -19,16 +19,24 @@ import { ExerciseSelector } from '../components/ExerciseSelector';
 import { SetRow } from '../components/SetRow';
 import { CatalogExercise } from '../constants/exerciseCatalog';
 import { getCategoryLabel } from '../constants/workoutTypes';
-import { storage, Workout, WorkoutCategory } from '../services/storage';
+import { getDb } from '../services/database';
+import { storage, Workout } from '../services/storage';
 import { RootStackParamList } from '../types/navigation';
 
-import { Exercise as StorageExercise } from '../services/storage';
-type Exercise = StorageExercise;
+// Define the Exercise and Set types based on the database schema
+type Set = { number: number; reps: number; weight: number; weightUnit?: string };
+type Exercise = {
+  id: number; // ID do banco de dados
+  name: string;
+  sets: Set[];
+  imageUri?: string;
+  notes?: string;
+};
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddWorkout'>;
 type RouteProps = {
   params?: {
-    workout?: Workout;
+    workout?: any; // Adjust this type based on your workout structure
   };
 };
 
@@ -37,7 +45,6 @@ export default function AddWorkoutScreen() {
   const route = useRoute<any>();
   const [inputRefs] = useState<{ [key: string]: React.RefObject<TextInput | null> }>({});
 
-  // Função para criar e gerenciar refs dos inputs
   const getInputRef = (exerciseId: string, field: string) => {
     const key = `${exerciseId}-${field}`;
     if (!inputRefs[key]) {
@@ -46,7 +53,6 @@ export default function AddWorkoutScreen() {
     return inputRefs[key];
   };
 
-  // Função para focar no próximo input
   const focusNextInput = (exerciseId: string, currentField: string) => {
     const fields = ['name', 'sets', 'reps', 'weight'];
     const currentIndex = fields.indexOf(currentField);
@@ -57,24 +63,26 @@ export default function AddWorkoutScreen() {
     }
   };
 
-  // Carregar dados do treino se estiver editando
   useEffect(() => {
     if (route.params?.workout) {
-      setWorkoutName(route.params.workout.name);
-      setExercises(route.params.workout.exercises);
+      const workoutToEdit: Workout = route.params.workout;
+      setWorkoutName(workoutToEdit.name);
+      setCategory(workoutToEdit.category);
+      setExercises(workoutToEdit.exercises);
     }
   }, [route.params?.workout]);
+
   const [workoutName, setWorkoutName] = useState('');
-  const [category, setCategory] = useState<WorkoutCategory>('other');
+  const [category, setCategory] = useState<any>('other');
   const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [exercises, setExercises] = useState<Exercise[]>([]);
 
   const handleConfirmSelection = (selectedCatalogExercises: CatalogExercise[]) => {
     const newExercises: Exercise[] = selectedCatalogExercises.map(catalogExercise => ({
-      id: `${Date.now()}-${catalogExercise.id}`,
+      id: Date.now() + Math.random(), // Gerar um ID numérico temporário para a UI
       name: catalogExercise.name,
-      sets: storage.createDefaultSets(catalogExercise.defaultSets),
+      sets: Array.from({ length: catalogExercise.defaultSets || 1 }, (_, i) => ({ number: i + 1, reps: 10, weight: 10, weightUnit: 'kg' })),
       imageUri: catalogExercise.imageUri,
       notes: catalogExercise.description
     }));
@@ -85,9 +93,9 @@ export default function AddWorkoutScreen() {
     setShowExerciseSelector(true);
   };
 
-  const updateExercise = (id: string, field: keyof Exercise, value: any) => {
-    setExercises(current => 
-      current.map(exercise => 
+  const updateExercise = (id: number, field: keyof Exercise, value: any) => {
+    setExercises(current =>
+      current.map(exercise =>
         exercise.id === id ? { ...exercise, [field]: value } : exercise
       )
     );
@@ -97,7 +105,6 @@ export default function AddWorkoutScreen() {
     if (Platform.OS === 'ios') {
       Alert.alert(title, message);
     } else {
-      // Para Android, vamos usar um timeout para garantir que o Alert seja mostrado
       setTimeout(() => {
         Alert.alert(title, message);
       }, 100);
@@ -105,51 +112,43 @@ export default function AddWorkoutScreen() {
   };
 
   const saveWorkout = async () => {
-    try {
-      console.log('Botão Salvar pressionado');
-      
-      // Validação do nome do treino
-      if (!workoutName.trim()) {
-        showAlert('Atenção', 'Digite o nome do treino');
-        return;
-      }
-
-      // Validação dos exercícios
-      if (exercises.length === 0) {
-        showAlert('Atenção', 'Adicione pelo menos um exercício');
-        return;
-      }
-
-      // Preparar dados do treino
-      const workoutData = {
-        name: workoutName,
-        category,
-        exercises
-      };
-
-      // Salvar ou atualizar o treino
-      if (route.params?.workout) {
-        await storage.updateWorkout({
-          ...route.params.workout,
-          ...workoutData
-        });
-      } else {
-        await storage.saveWorkout(workoutData);
-      }
-
-      // Mostra mensagem de sucesso
-      showAlert(
-        'Sucesso!', 
-        `Treino "${workoutName}" foi ${route.params?.workout ? 'atualizado' : 'salvo'} com ${exercises.length} exercício(s)`
-      );
-
-      // Voltar para a tela anterior
-      navigation.goBack();
-    } catch (error) {
-      console.error('Erro ao salvar treino:', error);
-      showAlert('Erro', 'Não foi possível salvar o treino');
+    if (!workoutName.trim()) {
+      showAlert('Atenção', 'Digite o nome do treino');
+      return;
     }
+
+    if (exercises.length === 0) {
+      showAlert('Atenção', 'Adicione pelo menos um exercício');
+      return;
+    }
+
+    const db = getDb();
+    await db.withTransactionAsync(async () => {
+      const workoutResult = await db.runAsync('INSERT INTO workouts (name, date, type) VALUES (?, ?, ?);', workoutName, new Date().toISOString(), category);
+      const workoutId = workoutResult.lastInsertRowId;
+
+      for (const exercise of exercises) {
+        await db.runAsync('INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);', exercise.name, 'general');
+        const exerciseResult = await db.getFirstAsync<any>('SELECT id FROM exercises WHERE name = ?;', exercise.name);
+        const exerciseId = exerciseResult?.id; // Usar o ID retornado pelo banco de dados
+
+        if (exerciseId) {
+          for (const set of exercise.sets) {
+            await db.runAsync('INSERT INTO sets (workout_id, exercise_id, reps, weight, weight_unit) VALUES (?, ?, ?, ?, ?);', workoutId, exerciseId, set.reps, set.weight, set.weightUnit || 'kg');
+          }
+        }
+      }
+    });
+
+    showAlert('Sucesso!', `Treino "${workoutName}" foi salvo com ${exercises.length} exercício(s)`);
+    // Navegar para a HomeScreen e depois para StartWorkoutScreen com o ID do treino recém-criado
+    navigation.navigate('Home');
+    // TODO: Passar o ID do treino para StartWorkoutScreen para que ele possa ser carregado do banco de dados
+    // Isso requer uma refatoração em StartWorkoutScreen para carregar o treino por ID
+    // Por enquanto, apenas voltamos para a Home
+    // navigation.navigate('StartWorkout', { workoutId: workoutId });
   };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -238,7 +237,7 @@ export default function AddWorkoutScreen() {
                   <Text style={styles.setsTitle}>Séries</Text>
                   {exercise.sets.map((set, setIndex) => (
                     <SetRow
-                      key={set.number}
+                      key={`set-${exercise.id}-${setIndex}`}
                       set={set}
                       onUpdate={(updatedSet) => {
                         const updatedSets = [...exercise.sets];
@@ -266,8 +265,7 @@ export default function AddWorkoutScreen() {
                   <TouchableOpacity
                     style={styles.addSetButton}
                     onPress={() => {
-                      const newSet = storage.createDefaultSets(1)[0];
-                      newSet.number = exercise.sets.length + 1;
+                      const newSet: Set = { number: exercise.sets.length + 1, reps: 10, weight: 10, weightUnit: 'kg' };
                       updateExercise(exercise.id, 'sets', [...exercise.sets, newSet]);
                     }}
                   >

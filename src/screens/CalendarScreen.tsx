@@ -1,10 +1,28 @@
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { getCategoryLabel } from '../constants/workoutTypes';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { MarkedDates } from 'react-native-calendars/src/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Workout, WorkoutLog, storage } from '../services/storage';
+import { getDb } from '../services/database';
+
+// Define types based on database schema
+type Set = { id: number; reps: number; weight: number };
+type Exercise = { id: number; name: string; category: string; sets: Set[] };
+type Workout = {
+  id: number;
+  date: string;
+  type: string;
+  name: string;
+  exercises: Exercise[];
+};
+type WorkoutLog = {
+  id: number;
+  workoutId: number;
+  completedAt: string;
+  workoutDetails: Workout; // Storing the full workout object as JSON
+};
 
 // Configuração de localidade para o calendário
 LocaleConfig.locales['pt-br'] = {
@@ -17,6 +35,7 @@ LocaleConfig.locales['pt-br'] = {
 LocaleConfig.defaultLocale = 'pt-br';
 
 export default function CalendarScreen() {
+  const navigation = useNavigation();
   const [history, setHistory] = useState<WorkoutLog[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
@@ -42,12 +61,71 @@ export default function CalendarScreen() {
 
   const loadData = async () => {
     try {
-      const historyData = await storage.getWorkoutHistory();
-      const workoutsData = await storage.getWorkouts();
-      setHistory(historyData);
-      setWorkouts(workoutsData);
+      const db = getDb();
+      // Fetch all available workouts with their exercises and sets
+      const rawWorkouts = await db.getAllAsync<any>(
+        `SELECT
+          w.id as workout_id,
+          w.date,
+          w.type,
+          e.id as exercise_id,
+          e.name as exercise_name,
+          e.category as exercise_category,
+          s.id as set_id,
+          s.reps,
+          s.weight
+        FROM workouts w
+        LEFT JOIN sets s ON w.id = s.workout_id
+        LEFT JOIN exercises e ON s.exercise_id = e.id
+        ORDER BY w.id, e.id, s.id;`
+      );
+
+      const workoutsMap = new Map<number, Workout>();
+      rawWorkouts.forEach((row: any) => {
+        if (!row.workout_id) return;
+
+        let workout = workoutsMap.get(row.workout_id);
+        if (!workout) {
+          workout = {
+            id: row.workout_id,
+            date: row.date,
+            type: row.type,
+            name: `Treino de ${row.type}`,
+            exercises: [],
+          };
+          workoutsMap.set(row.workout_id, workout);
+        }
+
+        if (row.exercise_id) {
+          let exercise = workout.exercises.find(ex => ex.id === row.exercise_id);
+          if (!exercise) {
+            exercise = {
+              id: row.exercise_id,
+              name: row.exercise_name,
+              category: row.exercise_category,
+              sets: [],
+            };
+            workout.exercises.push(exercise);
+          }
+
+          if (row.set_id) {
+            exercise.sets.push({
+              id: row.set_id,
+              reps: row.reps,
+              weight: row.weight,
+            });
+          }
+        }
+      });
+      setWorkouts(Array.from(workoutsMap.values()));
+
+      // Fetch workout history logs
+      const historyData = await db.getAllAsync<WorkoutLog>('SELECT id, workout_id as workoutId, completed_at as completedAt, workout_details as workoutDetails FROM workout_logs;');
+      setHistory(historyData.map(log => ({ ...log, workoutDetails: JSON.parse(log.workoutDetails) })));
+
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível carregar os dados.');
+      Alert.alert('Erro', 'Não foi possível carregar os dados do histórico.');
+      console.error('Error loading calendar data:', error);
     }
   };
 
@@ -56,19 +134,24 @@ export default function CalendarScreen() {
   const handleLogWorkout = async (workout: Workout) => {
     if (!selectedDate) return;
 
-    // Corrige o bug de fuso horário
     const now = new Date();
-    const timeString = now.toTimeString().split(' ')[0]; // "HH:MM:SS"
+    const timeString = now.toTimeString().split(' ')[0];
     const localDateTimeString = `${selectedDate}T${timeString}`;
     const completedAt = new Date(localDateTimeString);
 
-    await storage.saveWorkoutToHistory(workout, completedAt.toISOString());
+    const db = getDb();
+    await db.runAsync(
+      'INSERT INTO workout_logs (workout_id, completed_at, workout_details) VALUES (?, ?, ?);',
+      workout.id,
+      completedAt.toISOString(),
+      JSON.stringify(workout) // Store full workout details as JSON
+    );
 
     setModalVisible(false);
-    loadData(); // Recarrega os dados para atualizar o calendário
+    navigation.goBack();
   };
 
-  const handleDeleteLog = (logId: string) => {
+  const handleDeleteLog = async (logId: number) => {
     Alert.alert(
       'Excluir Registro',
       'Tem certeza que deseja excluir este registro de treino? Esta ação não pode ser desfeita.',
@@ -79,10 +162,12 @@ export default function CalendarScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await storage.deleteWorkoutFromHistory(logId);
-              loadData(); // Recarrega os dados para atualizar a UI
+              const db = getDb();
+              await db.runAsync('DELETE FROM workout_logs WHERE id = ?;', logId);
+              loadData();
             } catch (error) {
               Alert.alert('Erro', 'Não foi possível excluir o registro.');
+              console.error('Error deleting log:', error);
             }
           },
         },
@@ -107,22 +192,22 @@ export default function CalendarScreen() {
       <ScrollView style={styles.detailsContainer}>
         {selectedDate && workoutsForSelectedDate.length > 0 ? (
           workoutsForSelectedDate.map(log => (
-            <View key={log.logId} style={styles.logCard}>
+            <View key={log.id} style={styles.logCard}>
               <View style={styles.logCardHeader}>
-                <Text style={styles.logTitle}>{log.name}</Text>
-                <TouchableOpacity onPress={() => handleDeleteLog(log.logId)}>
+                <Text style={styles.logTitle}>{log.workoutDetails.name}</Text>
+                <TouchableOpacity onPress={() => handleDeleteLog(log.id)}>
                   <Text style={styles.deleteLogText}>Excluir</Text>
                 </TouchableOpacity>
               </View>
               <Text style={styles.logDate}>
                 {new Date(log.completedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </Text>
-              {log.exercises.map(ex => (
+              {log.workoutDetails.exercises.map(ex => (
                 <View key={ex.id} style={styles.exerciseContainer}>
                   <Text style={styles.exerciseName}>{ex.name}</Text>
                   {ex.sets.map(set => (
-                    <Text key={set.number} style={styles.setText}>
-                      Série {set.number}: {set.reps} reps com {set.weight}{set.weightUnit}
+                    <Text key={set.id} style={styles.setText}>
+                      Série {set.reps} reps com {set.weight} kg
                     </Text>
                   ))}
                 </View>
@@ -152,10 +237,12 @@ export default function CalendarScreen() {
             <Text style={styles.modalTitle}>Registrar Treino</Text>
             <FlatList
               data={workouts}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.workoutOption} onPress={() => handleLogWorkout(item)}>
-                  <Text style={styles.workoutOptionText}>{item.name}</Text>
+                  <Text style={styles.workoutOptionText}>
+                    {item.name} ({getCategoryLabel(item.type)})
+                  </Text>
                 </TouchableOpacity>
               )}
             />
@@ -170,27 +257,133 @@ export default function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  title: { fontSize: 24, fontWeight: 'bold' },
-  detailsContainer: { flex: 1, padding: 20 },
-  logCard: { backgroundColor: '#f8f8f8', borderRadius: 8, padding: 15, marginBottom: 15 },
-  logCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-  logTitle: { fontSize: 18, fontWeight: '600', flex: 1 },
-  deleteLogText: { fontSize: 14, color: '#FF3B30', fontWeight: '500' },
-  logDate: { fontSize: 14, color: '#666', marginBottom: 10 },
-  exerciseContainer: { marginTop: 5 },
-  exerciseName: { fontSize: 16, fontWeight: '500' },
-  setText: { color: '#333', marginLeft: 10 },
-  noWorkoutContainer: { alignItems: 'center' },
-  noWorkoutText: { textAlign: 'center', marginTop: 20, fontSize: 16, color: '#666' },
-  logButton: { backgroundColor: '#007AFF', padding: 12, borderRadius: 8, marginTop: 16 },
-  logButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
-  modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { width: '85%', backgroundColor: 'white', borderRadius: 10, padding: 20, maxHeight: '70%' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
-  workoutOption: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  workoutOptionText: { fontSize: 18 },
-  cancelButton: { marginTop: 15, padding: 10, alignItems: 'center' },
-  cancelButtonText: { fontSize: 16, color: '#FF3B30' },
+  container: {
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+  },
+  header: {
+    padding: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  detailsContainer: {
+    flex: 1,
+    padding: 10,
+  },
+  logCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  logCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  logTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  deleteLogText: {
+    color: 'red',
+    fontWeight: 'bold',
+  },
+  logDate: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  exerciseContainer: {
+    marginBottom: 8,
+    paddingLeft: 10,
+    borderLeftWidth: 2,
+    borderLeftColor: '#007AFF',
+  },
+  exerciseName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#555',
+    marginBottom: 3,
+  },
+  setText: {
+    fontSize: 14,
+    color: '#777',
+  },
+  noWorkoutContainer: {
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  noWorkoutText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  logButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+  },
+  logButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+    color: '#333',
+  },
+  workoutOption: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  workoutOptionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  cancelButton: {
+    marginTop: 20,
+    backgroundColor: '#f44336',
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });

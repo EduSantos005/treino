@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CatalogExercise } from '../constants/exerciseCatalog';
 import { WEIGHT_UNITS } from '../constants/workoutTypes';
+import { getDb } from './database';
 
-const WORKOUTS_KEY = '@app_treino:workouts';
 const WORKOUT_HISTORY_KEY = '@app_treino:workout_history';
 const CUSTOM_EXERCISES_KEY = '@app_treino:custom_exercises';
 
@@ -11,6 +11,7 @@ export type WorkoutCategory = 'chest-triceps' | 'back-biceps' | 'legs' | 'should
 export type WeightUnit = keyof typeof WEIGHT_UNITS;
 
 export interface Set {
+  id: number;
   number: number;
   reps: string;
   weight: string;
@@ -35,6 +36,7 @@ export interface Workout {
   createdAt: string;
   updatedAt: string;
   isTemplate?: boolean;
+  lastTrained?: string; // Nova propriedade
 }
 
 export interface WorkoutLog {
@@ -91,16 +93,6 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
         ]
       },
       {
-        id: '5',
-        name: 'Elevação lateral na Polia',
-        imageUri: 'https://static.strengthlevel.com/images/illustrations/cable-lateral-raise-1000x1000.jpg',
-        sets: [
-          { number: 1, reps: '10', weight: '2', weightUnit: 'plates' },
-          { number: 2, reps: '8', weight: '3', weightUnit: 'plates' },
-          { number: 3, reps: '8', weight: '3', weightUnit: 'plates' }
-        ]
-      },
-      {
         id: '6',
         name: 'Tríceps Pulley na Polia',
         imageUri: 'https://static.strengthlevel.com/images/illustrations/tricep-pushdown-1000x1000.jpg',
@@ -144,26 +136,6 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
           { number: 1, reps: '10', weight: '40', weightUnit: 'kg' },
           { number: 2, reps: '8', weight: '45', weightUnit: 'kg' },
           { number: 3, reps: '8', weight: '50', weightUnit: 'kg' }
-        ]
-      },
-      {
-        id: '10',
-        name: 'Puxada invertida máquina',
-        imageUri: 'https://static.strengthlevel.com/images/exercises/machine-reverse-fly/machine-reverse-fly-800.avif',
-        sets: [
-          { number: 1, reps: '10', weight: '30', weightUnit: 'kg', notes: 'Banco no 5' },
-          { number: 2, reps: '8', weight: '35', weightUnit: 'kg', notes: 'Banco no 5' },
-          { number: 3, reps: '8', weight: '45', weightUnit: 'kg', notes: 'Banco no 5' }
-        ]
-      },
-      {
-        id: '11',
-        name: 'Pull Down na Polia',
-        imageUri: 'https://static.strengthlevel.com/images/illustrations/straight-arm-pulldown-1000x1000.jpg',
-        sets: [
-          { number: 1, reps: '10', weight: '6', weightUnit: 'plates' },
-          { number: 2, reps: '8', weight: '6', weightUnit: 'plates' },
-          { number: 3, reps: '8', weight: '7', weightUnit: 'plates' }
         ]
       },
       {
@@ -257,78 +229,214 @@ const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
 ];
 
 export const storage = {
-  async seedDefaultWorkouts(): Promise<void> {
-    try {
-      const existingWorkouts = await this.getWorkouts();
-      if (existingWorkouts.length > 0) {
-        return; // Não faz nada se já existirem treinos
-      }
-
-      const newWorkouts = DEFAULT_WORKOUTS.map((workout, index) => ({
-        ...workout,
-        id: `default_${index}_${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-
-      await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(newWorkouts));
-
-    } catch (error) {
-      console.error('Erro ao criar treinos padrão:', error);
-    }
-  },
 
   async saveWorkout(workout: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>): Promise<Workout> {
-    try {
-      const workouts = await this.getWorkouts();
-      const newWorkout: Workout = {
-        ...workout,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify([...workouts, newWorkout]));
-      return newWorkout;
-    } catch (error) {
-      console.error('Erro ao salvar treino:', error);
-      throw new Error('Não foi possível salvar o treino');
+    const database = getDb();
+    const now = new Date().toISOString();
+
+    // Inserir o treino sem especificar o ID, deixando o AUTOINCREMENT cuidar disso
+    const workoutResult = await database.runAsync(
+      'INSERT INTO workouts (name, category, createdAt, updatedAt) VALUES (?, ?, ?, ?)',
+      [workout.name, workout.category, now, now]
+    );
+    const workoutId = workoutResult.lastInsertRowId; // Obter o ID gerado pelo banco de dados
+
+    if (!workoutId) {
+      throw new Error('Failed to get workout ID after insertion.');
     }
+
+    const newWorkout: Workout = {
+      ...workout,
+      id: workoutId.toString(), // Usar o ID gerado pelo banco de dados
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    for (const exercise of newWorkout.exercises) {
+      let exerciseId: number | null = null;
+      const existingExercise = await database.getFirstAsync<{ id: number }>(
+        'SELECT id FROM exercises WHERE name = ?;',
+        exercise.name
+      );
+
+      if (existingExercise) {
+        exerciseId = existingExercise.id;
+      } else {
+        const exerciseResult = await database.runAsync(
+          'INSERT INTO exercises (name, category, image_uri) VALUES (?, ?, ?);',
+          exercise.name,
+          exercise.category || 'default',
+          exercise.imageUri || null
+        );
+        exerciseId = exerciseResult.lastInsertRowId;
+      }
+
+      if (exerciseId) {
+        for (const set of exercise.sets) {
+          await database.runAsync(
+            'INSERT INTO sets (workout_id, exercise_id, reps, weight, weight_unit) VALUES (?, ?, ?, ?, ?);',
+            workoutId, // Usar o workoutId gerado pelo banco de dados
+            exerciseId,
+            set.reps,
+            set.weight,
+            set.weightUnit
+          );
+        }
+      }
+    }
+    return newWorkout;
   },
 
   async getWorkouts(): Promise<Workout[]> {
-    try {
-      const data = await AsyncStorage.getItem(WORKOUTS_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Erro ao buscar treinos:', error);
-      return [];
-    }
+    const database = getDb();
+    const rawWorkouts = await database.getAllAsync<any>(
+      `SELECT
+        w.id as workout_id,
+        w.name as workout_name,
+        w.date,
+        w.type,
+        e.id as exercise_id,
+        e.name as exercise_name,
+        e.category as exercise_category,
+        e.image_uri as exercise_image_uri,
+        s.id as set_id,
+        s.reps,
+        s.weight,
+        s.weight_unit
+      FROM workouts w
+      LEFT JOIN sets s ON w.id = s.workout_id
+      LEFT JOIN exercises e ON s.exercise_id = e.id
+      ORDER BY w.id, e.id, s.id;`
+    );
+
+    const workoutsMap = new Map<string, Workout>();
+    const workoutLogs = await this.getWorkoutHistory(); // Obter o histórico de treinos
+
+    rawWorkouts.forEach((row: any) => {
+      if (!row.workout_id) return; // Skip if no workout data
+
+      let workout = workoutsMap.get(row.workout_id);
+      if (!workout) {
+        workout = {
+          id: row.workout_id.toString(),
+          name: row.workout_name,
+          date: row.date,
+          category: row.type,
+          exercises: [],
+          createdAt: '', // Placeholder, if not stored in DB
+          updatedAt: '', // Placeholder, if not stored in DB
+        };
+        workoutsMap.set(row.workout_id, workout);
+      }
+
+      if (row.exercise_id) {
+        let exercise = workout.exercises.find(ex => ex.id === row.exercise_id.toString());
+        if (!exercise) {
+          exercise = {
+            id: row.exercise_id.toString(),
+            name: row.exercise_name,
+            sets: [],
+            category: row.exercise_category,
+            imageUri: row.exercise_image_uri,
+          };
+          workout.exercises.push(exercise);
+        }
+
+        if (row.set_id) {
+          exercise.sets.push({
+            id: row.set_id,
+            number: exercise.sets.length + 1, // Assign a number for display
+            reps: row.reps.toString(),
+            weight: row.weight.toString(),
+            weightUnit: (row.weight_unit || 'kg') as WeightUnit,
+            isCompleted: false, // Default value
+          });
+        }
+      }
+    });
+
+    // Adicionar a data do último treino realizado
+    const workoutsWithLastTrained = Array.from(workoutsMap.values()).map(workout => {
+      const lastLog = workoutLogs
+        .filter(log => log.workoutId === workout.id)
+        .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
+      
+      return {
+        ...workout,
+        lastTrained: lastLog ? lastLog.completedAt : undefined,
+      };
+    });
+
+    return workoutsWithLastTrained;
   },
 
   async updateWorkout(workout: Workout): Promise<void> {
-    try {
-      const workouts = await this.getWorkouts();
-      const updatedWorkouts = workouts.map((w) => 
-        w.id === workout.id 
-          ? { ...workout, updatedAt: new Date().toISOString() }
-          : w
+    const database = getDb();
+    const updatedAt = new Date().toISOString();
+    const workoutDbId = parseInt(workout.id, 10); // Converter para número
+
+    await database.runAsync(
+      'UPDATE workouts SET name = ?, category = ?, updatedAt = ? WHERE id = ?',
+      [workout.name, workout.category, updatedAt, workoutDbId] // Usar workoutDbId
+    );
+
+    // Delete old sets and exercises for this workout
+    await database.runAsync('DELETE FROM sets WHERE workout_id = ?;', workoutDbId); // Usar workoutDbId
+    // Note: We are not deleting exercises from the exercises table here,
+    // as they might be linked to other workouts. This is a simplification.
+
+    for (const exercise of workout.exercises) {
+      let exerciseId: number | null = null;
+      const existingExercise = await database.getFirstAsync<{ id: number }>(
+        'SELECT id FROM exercises WHERE name = ?;',
+        exercise.name
       );
-      await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(updatedWorkouts));
-    } catch (error) {
-      console.error('Erro ao atualizar treino:', error);
-      throw new Error('Não foi possível atualizar o treino');
+
+      if (existingExercise) {
+        exerciseId = existingExercise.id;
+        // Atualizar o image_uri para o exercício existente
+        await database.runAsync(
+          'UPDATE exercises SET category = ?, image_uri = ? WHERE id = ?;',
+          exercise.category || 'default',
+          exercise.imageUri || null,
+          exerciseId
+        );
+      } else {
+        const exerciseResult = await database.runAsync(
+          'INSERT INTO exercises (name, category, image_uri) VALUES (?, ?, ?);',
+          exercise.name,
+          exercise.category || 'default',
+          exercise.imageUri || null
+        );
+        exerciseId = exerciseResult.lastInsertRowId;
+      }
+
+      if (exerciseId) {
+        for (const set of exercise.sets) {
+          await database.runAsync(
+            'INSERT INTO sets (workout_id, exercise_id, reps, weight, weight_unit) VALUES (?, ?, ?, ?, ?);',
+            workoutDbId, // Usar workoutDbId
+            exerciseId,
+            set.reps,
+            set.weight,
+            set.weightUnit
+          );
+        }
+      }
     }
   },
 
   async deleteWorkout(id: string): Promise<void> {
-    try {
-      const workouts = await this.getWorkouts();
-      const filteredWorkouts = workouts.filter((w) => w.id !== id);
-      await AsyncStorage.setItem(WORKOUTS_KEY, JSON.stringify(filteredWorkouts));
-    } catch (error) {
-      console.error('Erro ao excluir treino:', error);
-      throw new Error('Não foi possível excluir o treino');
-    }
+    return new Promise((resolve, reject) => {
+      db.transaction(tx => {
+        tx.executeSql(
+          'DELETE FROM workouts WHERE id = ?',
+          [id],
+          () => resolve(),
+          (_, error) => { reject(error); return false; }
+        );
+      });
+    });
   },
 
   async saveWorkoutToHistory(workout: Workout, completedAt?: string): Promise<void> {
@@ -419,6 +527,7 @@ export const storage = {
 
   createDefaultSets(numberOfSets: number): Set[] {
     return Array.from({ length: numberOfSets }, (_, index) => ({
+      id: Date.now() + index + Math.random(), // Gerar um ID único para cada set
       number: index + 1,
       reps: '',
       weight: '',

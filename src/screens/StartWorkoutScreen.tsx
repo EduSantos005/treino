@@ -2,6 +2,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Dimensions,
     KeyboardAvoidingView,
@@ -22,19 +23,58 @@ import { RootStackParamList } from '../types/navigation';
 import * as Haptics from 'expo-haptics';
 
 type RouteParams = {
-  workout: Workout;
+  workout?: Workout;
+  workoutId?: number;
 };
 
 const REST_TIME_SECONDS = 60;
 
 export default function StartWorkoutScreen() {
   const route = useRoute();
-  const { workout } = route.params as RouteParams;
+  const { workout: initialWorkout, workoutId } = route.params as RouteParams;
+  const [currentWorkout, setCurrentWorkout] = useState<Workout | undefined>(initialWorkout);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
-  const [exercises, setExercises] = useState(workout.exercises);
+  const [exercises, setExercises] = useState<Exercise[]>(initialWorkout?.exercises || []);
   const width = Dimensions.get('window').width;
   const carouselRef = useRef<any>(null);
   const inputRefs = useRef<{ [key: string]: TextInput }>({});
+
+  useEffect(() => {
+    const loadWorkout = async () => {
+      if (workoutId) {
+        try {
+          const fetchedWorkouts = await storage.getWorkouts();
+          const foundWorkout = fetchedWorkouts.find(w => w.id === workoutId.toString());
+          if (foundWorkout) {
+            setCurrentWorkout(foundWorkout);
+            setExercises(foundWorkout.exercises);
+          } else {
+            Alert.alert('Erro', 'Treino não encontrado.');
+            navigation.goBack();
+          }
+        } catch (error) {
+          Alert.alert('Erro', 'Não foi possível carregar o treino.');
+          console.error('Error loading workout:', error);
+          navigation.goBack();
+        }
+      } else if (initialWorkout) {
+        setCurrentWorkout(initialWorkout);
+        setExercises(initialWorkout.exercises);
+      } else {
+        Alert.alert('Erro', 'Nenhum treino fornecido.');
+        navigation.goBack();
+      }
+    };
+    loadWorkout();
+  }, [workoutId, initialWorkout]);
+
+  if (!currentWorkout) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </SafeAreaView>
+    );
+  }
 
   // Timer State
   const [isTimerVisible, setTimerVisible] = useState(false);
@@ -95,11 +135,99 @@ export default function StartWorkoutScreen() {
     return exercises.every(isExerciseCompleted);
   };
 
+  if (!currentWorkout) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </SafeAreaView>
+    );
+  }
+
+  const renderExercise = ({ item: exercise, index: exerciseIndex }: { item: Exercise; index: number }) => {
+    const completed = isExerciseCompleted(exercise);
+
+    return (
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={140}
+      >
+        <ScrollView 
+          style={styles.exerciseCard}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.exerciseCardContent}
+        >
+          <View style={styles.exerciseHeader}>
+            <Text style={styles.exerciseName}>{exercise.name}</Text>
+            {completed && <Text style={styles.completedBadge}>✓</Text>}
+          </View>
+
+          {exercise.imageUri && (
+            <View style={styles.imageContainer}>
+              <ExerciseImage
+                imageUri={exercise.imageUri}
+              />
+            </View>
+          )}
+
+          <View style={styles.setsContainer}>
+            {exercise.sets.map((set, setIndex) => (
+              <SetRow
+                key={set.id}
+                set={set}
+                onUpdate={(updatedSet) => updateSet(exerciseIndex, setIndex, updatedSet)}
+                showDelete={false}
+                repsRef={(ref) => inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref}
+                weightRef={(ref) => inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref}
+                onSubmitReps={() => focusNextInput(exerciseIndex, setIndex, 'reps')}
+              />
+            ))}
+          </View>
+
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={[styles.navButton, exerciseIndex === 0 && styles.navButtonDisabled]}
+              onPress={() => {
+                if (exerciseIndex > 0) {
+                  carouselRef.current?.scrollTo({ index: exerciseIndex - 1 });
+                }
+              }}
+              disabled={exerciseIndex === 0}
+            >
+              <Text style={[styles.navButtonText, exerciseIndex === 0 && styles.navButtonTextDisabled]}>
+                ← Voltar Exerc.
+              </Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.progressText}>
+              {exerciseIndex + 1} de {exercises.length}
+            </Text>
+            
+            <TouchableOpacity
+              style={[styles.navButton, exerciseIndex === exercises.length - 1 && styles.navButtonDisabled]}
+              onPress={() => {
+                if (exerciseIndex < exercises.length - 1) {
+                  carouselRef.current?.scrollTo({ index: exerciseIndex + 1 });
+                }
+              }}
+              disabled={exerciseIndex === exercises.length - 1}
+            >
+              <Text style={[styles.navButtonText, exerciseIndex === exercises.length - 1 && styles.navButtonTextDisabled]}>
+                Próx. Exerc. →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  };
+
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   
   const finishWorkout = () => {
+    if (!currentWorkout) return;
     const completedWorkout: Workout = {
-      ...workout,
+      ...currentWorkout,
       exercises: exercises,
     };
 
@@ -152,89 +280,10 @@ export default function StartWorkoutScreen() {
     }
   };
 
-  const renderExercise = ({ item: exercise, index: exerciseIndex }: { item: Exercise; index: number }) => {
-    const completed = isExerciseCompleted(exercise);
-
-    return (
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={140}
-      >
-        <ScrollView 
-          style={styles.exerciseCard}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.exerciseCardContent}
-        >
-          <View style={styles.exerciseHeader}>
-            <Text style={styles.exerciseName}>{exercise.name}</Text>
-            {completed && <Text style={styles.completedBadge}>✓</Text>}
-          </View>
-
-          {exercise.imageUri && (
-            <View style={styles.imageContainer}>
-              <ExerciseImage
-                imageUri={exercise.imageUri}
-              />
-            </View>
-          )}
-
-          <View style={styles.setsContainer}>
-            {exercise.sets.map((set, setIndex) => (
-              <SetRow
-                key={set.number}
-                set={set}
-                onUpdate={(updatedSet) => updateSet(exerciseIndex, setIndex, updatedSet)}
-                showDelete={false}
-                repsRef={(ref) => inputRefs.current[`${exerciseIndex}-${setIndex}-reps`] = ref}
-                weightRef={(ref) => inputRefs.current[`${exerciseIndex}-${setIndex}-weight`] = ref}
-                onSubmitReps={() => focusNextInput(exerciseIndex, setIndex, 'reps')}
-              />
-            ))}
-          </View>
-
-          <View style={styles.navigationContainer}>
-            <TouchableOpacity
-              style={[styles.navButton, exerciseIndex === 0 && styles.navButtonDisabled]}
-              onPress={() => {
-                if (exerciseIndex > 0) {
-                  carouselRef.current?.scrollTo({ index: exerciseIndex - 1 });
-                }
-              }}
-              disabled={exerciseIndex === 0}
-            >
-              <Text style={[styles.navButtonText, exerciseIndex === 0 && styles.navButtonTextDisabled]}>
-                ← Voltar Exerc.
-              </Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.progressText}>
-              {exerciseIndex + 1} de {exercises.length}
-            </Text>
-            
-            <TouchableOpacity
-              style={[styles.navButton, exerciseIndex === exercises.length - 1 && styles.navButtonDisabled]}
-              onPress={() => {
-                if (exerciseIndex < exercises.length - 1) {
-                  carouselRef.current?.scrollTo({ index: exerciseIndex + 1 });
-                }
-              }}
-              disabled={exerciseIndex === exercises.length - 1}
-            >
-              <Text style={[styles.navButtonText, exerciseIndex === exercises.length - 1 && styles.navButtonTextDisabled]}>
-                Próx. Exerc. →
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['right', 'left']}>
       <View style={styles.header}>
-        <Text style={styles.workoutTitle}>{workout.name}</Text>
+        <Text style={styles.workoutTitle}>{currentWorkout.name}</Text>
         <TouchableOpacity
           style={[
             styles.finishButton,

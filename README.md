@@ -36,7 +36,7 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - **React Native**: Framework para desenvolvimento mobile
 - **Expo**: Plataforma de desenvolvimento (SDK 50+)
 - **React Navigation**: Sistema de navegação
-- **AsyncStorage**: Armazenamento local persistente
+- **Expo-SQLite**: Banco de dados local para persistência de dados offline-first.
 - **TypeScript**: Tipagem estática
 - **Expo Haptics**: Feedback tátil (vibração)
 
@@ -58,36 +58,31 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 
 ## 💾 Armazenamento
 
-Os dados são persistidos localmente usando AsyncStorage com a seguinte estrutura:
+Os dados são persistidos localmente usando **Expo-SQLite**, garantindo que o aplicativo funcione 100% offline. A estrutura do banco de dados é a seguinte:
 
-```typescript
-type WorkoutCategory = 'chest-triceps' | 'back-biceps' | 'legs' | 'shoulders' | 'other';
+**Tabela `workouts`**
+| Coluna | Tipo    | Descrição                               |
+|--------|---------|-------------------------------------------|
+| id     | INTEGER | Chave primária, auto-incremento           |
+| date   | TEXT    | Data do treino (ISO 8601)                 |
+| type   | TEXT    | Categoria do treino (ex: 'chest-triceps') |
 
-interface Set {
-  number: number;
-  reps: string;
-  weight: string;
-  weightUnit: 'kg' | 'plates' | 'lbs';
-  isCompleted?: boolean;
-}
+**Tabela `exercises`**
+| Coluna   | Tipo    | Descrição                                 |
+|----------|---------|---------------------------------------------|
+| id       | INTEGER | Chave primária, auto-incremento             |
+| name     | TEXT    | Nome do exercício (único)                   |
+| category | TEXT    | Grupo muscular principal (ex: 'peito')      |
 
-interface Exercise {
-  id: string;
-  name: string;
-  sets: Set[];
-  imageUri?: string;
-  notes?: string;
-}
+**Tabela `sets`**
+| Coluna      | Tipo    | Descrição                               |
+|-------------|---------|-------------------------------------------|
+| id          | INTEGER | Chave primária, auto-incremento           |
+| workout_id  | INTEGER | Chave estrangeira para a tabela `workouts`  |
+| exercise_id | INTEGER | Chave estrangeira para a tabela `exercises` |
+| reps        | INTEGER | Número de repetições realizadas           |
+| weight      | REAL    | Peso utilizado (em kg)                    |
 
-interface Workout {
-  id: string;
-  name: string;
-  category: WorkoutCategory;
-  exercises: Exercise[];
-  createdAt: string;
-  updatedAt: string;
-}
-```
 
 ## 🚀 Como Executar
 
@@ -104,10 +99,6 @@ npx expo start
 3. Use o aplicativo Expo Go no seu dispositivo para escanear o QR Code.
 
 ## 📝 Próximos Passos
-
-- [ ] Criação de exercicio (Para exercício não cadastrado no app)
-  - [ ] Tela no Sistema aonde o usuário pode consultar os exercícios "Padrão" já criados.
-
 
 - [ ] Tracking de progresso:
   - [ ] Histórico de peso/repetições

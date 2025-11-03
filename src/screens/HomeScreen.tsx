@@ -12,12 +12,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getCategoryLabel } from '../constants/workoutTypes';
-import { Workout, WorkoutLog, storage } from '../services/storage';
+import { getDb } from '../services/database';
 import { RootStackParamList } from '../types/navigation';
+import { storage } from '../services/storage';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
-// Função para calcular a diferença de dias
+type Set = { id: number; reps: number; weight: number };
+type Exercise = { id: number; name: string; category: string; sets: Set[] };
+type Workout = {
+  id: number;
+  date: string;
+  type: string;
+  name: string;
+  exercises: Exercise[];
+};
+
 const getDaysAgo = (dateString: string) => {
   const today = new Date();
   const pastDate = new Date(dateString);
@@ -34,18 +44,32 @@ const getDaysAgo = (dateString: string) => {
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [history, setHistory] = useState<WorkoutLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const workoutsData = await storage.getWorkouts();
-      const historyData = await storage.getWorkoutHistory();
-      setWorkouts(workoutsData);
-      setHistory(historyData);
+      const fetchedWorkouts = await storage.getWorkouts();
+      // Comparar os IDs dos treinos para evitar re-renderizações desnecessárias
+      const currentWorkoutIds = workouts.map(w => w.id).sort().join(',');
+      const fetchedWorkoutIds = fetchedWorkouts.map(w => w.id).sort().join(',');
+
+      if (currentWorkoutIds !== fetchedWorkoutIds) {
+        setWorkouts(fetchedWorkouts);
+      } else {
+        // Se os IDs são os mesmos, verificar se algum lastTrained mudou
+        const hasLastTrainedChanged = fetchedWorkouts.some((fetchedW, index) => {
+          const currentW = workouts[index];
+          return currentW && fetchedW.id === currentW.id && fetchedW.lastTrained !== currentW.lastTrained;
+        });
+
+        if (hasLastTrainedChanged) {
+          setWorkouts(fetchedWorkouts);
+        }
+      }
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível carregar os dados');
+      Alert.alert('Erro', 'Não foi possível carregar os treinos.');
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
@@ -57,7 +81,7 @@ export default function HomeScreen() {
     }, [])
   );
 
-  const handleDeleteWorkout = (workout: Workout) => {
+  const handleDeleteWorkout = async (workout: Workout) => {
     Alert.alert(
       'Confirmar exclusão',
       `Deseja excluir o treino "${workout.name}"?`,
@@ -70,62 +94,52 @@ export default function HomeScreen() {
           text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await storage.deleteWorkout(workout.id);
-              loadData();
-            } catch (error) {
-              Alert.alert('Erro', 'Não foi possível excluir o treino');
-            }
+            const db = getDb();
+            await db.runAsync('DELETE FROM workouts WHERE id = ?;', workout.id);
+            // Also delete associated sets and exercises if they are not linked to other workouts
+            // For simplicity, we are only deleting the workout entry for now.
+            loadData();
           }
         }
       ]
     );
   };
 
-  const renderWorkoutItem = ({ item }: { item: Workout }) => {
-    const lastWorkout = history.find(log => log.workoutId === item.id);
-
-    return (
-      <View style={styles.workoutCard}>
-        <View style={styles.workoutInfo}>
-          <Text style={styles.workoutName}>{item.name}</Text>
-          <Text style={styles.workoutDetails}>
-            {getCategoryLabel(item.category)} • {item.exercises.length} exercício(s)
-          </Text>
-          {lastWorkout ? (
-            <Text style={styles.lastTrainedText}>
-              Último treino: {getDaysAgo(lastWorkout.completedAt)}
-            </Text>
-          ) : (
-            <Text style={styles.lastTrainedText}>Ainda não treinado</Text>
-          )}
-        </View>
-        
-        <View style={styles.workoutActions}>
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('StartWorkout', { workout: item })}
-            style={[styles.actionButton, styles.startButton]}
-          >
-            <Text style={styles.actionButtonText}>Iniciar Treino</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('AddWorkout', { workout: item })}
-            style={[styles.actionButton, styles.editButton]}
-          >
-            <Text style={styles.actionButtonText}>Editar</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            onPress={() => handleDeleteWorkout(item)}
-            style={[styles.actionButton, styles.deleteButton]}
-          >
-            <Text style={styles.actionButtonText}>Excluir</Text>
-          </TouchableOpacity>
-        </View>
+  const renderWorkoutItem = ({ item }: { item: Workout }) => (
+    <View style={styles.workoutCard}>
+      <View style={styles.workoutInfo}>
+        <Text style={styles.workoutName}>{item.name}</Text>
+        <Text style={styles.workoutDetails}>
+          {getCategoryLabel(item.type)} • {item.exercises.length} exercício(s)
+        </Text>
+        <Text style={styles.lastTrainedText}>Último treino: {item.lastTrained ? getDaysAgo(item.lastTrained) : 'Nunca treinado'}</Text>
       </View>
-    );
-  };
+      
+      <View style={styles.workoutActions}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('StartWorkout', { workout: item })}
+          style={[styles.actionButton, styles.startButton]}
+        >
+          <Text style={styles.actionButtonText}>Iniciar Treino</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('AddWorkout', { workout: item })}
+          style={[styles.actionButton, styles.editButton]}
+        >
+          <Text style={styles.actionButtonText}>Editar</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          onPress={() => handleDeleteWorkout(item)}
+          style={[styles.actionButton, styles.deleteButton]}
+        >
+          <Text style={styles.actionButtonText}>Excluir</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
 
   return (
     <SafeAreaView style={styles.container}>
