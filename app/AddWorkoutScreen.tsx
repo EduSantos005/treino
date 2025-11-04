@@ -60,6 +60,31 @@ export default function AddWorkoutScreen() {
   const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [workoutId, setWorkoutId] = useState<number | null>(null);
+
+  const showAlert = (title: string, message: string) => {
+    Alert.alert(title, message);
+  };
+
+  const updateExercise = (exerciseId: number, field: keyof Exercise | 'sets', value: any) => {
+    setExercises((prev) =>
+      prev.map((ex) =>
+        ex.id === exerciseId ? { ...ex, [field]: value } : ex
+      )
+    );
+  };
+
+  const handleConfirmSelection = (selectedExercises: CatalogExercise[]) => {
+    const newExercises: Exercise[] = selectedExercises.map((ex) => ({
+      id: Date.now() + Math.random(), // Unique ID for new exercise
+      name: ex.name,
+      sets: [{ number: 1, reps: 10, weight: 0, weightUnit: 'kg' }],
+      imageUri: ex.imageUri,
+      notes: '',
+    }));
+    setExercises((prev) => [...prev, ...newExercises]);
+    setShowExerciseSelector(false);
+  };
 
   const initialWorkoutData = params.workout ? JSON.parse(params.workout as string) : {};
   useEffect(() => {
@@ -126,7 +151,7 @@ export default function AddWorkoutScreen() {
             returnKeyType="next"
             onSubmitEditing={() => {
               if (exercises.length === 0) {
-                addExercise();
+                setShowExerciseSelector(true);
               } else {
                 inputRefs[`${exercises[0].id}-name`]?.current?.focus();
               }
@@ -236,7 +261,7 @@ export default function AddWorkoutScreen() {
 
           <TouchableOpacity 
             style={styles.addButton} 
-            onPress={addExercise}
+            onPress={() => setShowExerciseSelector(true)}
           >
             <Text style={styles.addButtonText}>+ Adicionar Exercício</Text>
           </TouchableOpacity>

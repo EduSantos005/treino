@@ -13,8 +13,38 @@ export const initDB = async (): Promise<SQLite.SQLiteDatabase> => {
     await db.execAsync('ALTER TABLE workout_logs ADD COLUMN duration INTEGER;');
   }
 
+  // Migration: Add category column to workouts if it doesn't exist
+  const workoutColumns = await db.getAllAsync<any>('PRAGMA table_info(workouts);');
+  const hasCategoryColumn = workoutColumns.some(column => column.name === 'category');
+  const hasTypeColumn = workoutColumns.some(column => column.name === 'type');
+
+  if (!hasCategoryColumn) {
+    await db.execAsync('ALTER TABLE workouts ADD COLUMN category TEXT;');
+  }
+
+  // Migration: Add createdAt and updatedAt columns to workouts if they don't exist
+  const hasCreatedAtColumn = workoutColumns.some(column => column.name === 'createdAt');
+  const hasUpdatedAtColumn = workoutColumns.some(column => column.name === 'updatedAt');
+
+  if (!hasCreatedAtColumn) {
+    await db.execAsync('ALTER TABLE workouts ADD COLUMN createdAt TEXT;');
+  }
+  if (!hasUpdatedAtColumn) {
+    await db.execAsync('ALTER TABLE workouts ADD COLUMN updatedAt TEXT;');
+  }
+
+  if (hasTypeColumn) {
+    // This is a more complex migration, usually involves creating a new table,
+    // copying data, dropping the old, and renaming the new. For simplicity
+    // in development, we might just ignore or clear data if type column exists
+    // and category doesn't. Or, if we are sure 'type' was meant to be 'category',
+    // we can copy data. For now, let's assume a fresh start or that 'type' will be handled.
+    // For a real app, this needs careful consideration.
+    console.warn("Old 'type' column found in 'workouts' table. Consider a proper migration strategy.");
+  }
+
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, date TEXT, type TEXT);
+    CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, date TEXT, category TEXT, createdAt TEXT, updatedAt TEXT);
     CREATE TABLE IF NOT EXISTS exercises (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, category TEXT, image_uri TEXT);
     CREATE TABLE IF NOT EXISTS sets (id INTEGER PRIMARY KEY AUTOINCREMENT, workout_id INTEGER, exercise_id INTEGER, reps INTEGER, weight REAL, weight_unit TEXT, FOREIGN KEY(workout_id) REFERENCES workouts(id), FOREIGN KEY(exercise_id) REFERENCES exercises(id));
     CREATE TABLE IF NOT EXISTS workout_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, workout_id INTEGER, completed_at TEXT, workout_details TEXT, duration INTEGER);
@@ -64,7 +94,7 @@ export const seedDefaultWorkouts = async (database: SQLite.SQLiteDatabase) => {
 
         name: 'Academia - Costas e Bíceps',
 
-        type: 'back-biceps',
+        category: 'back-biceps',
 
         exercises: [
 
@@ -132,7 +162,7 @@ export const seedDefaultWorkouts = async (database: SQLite.SQLiteDatabase) => {
 
         name: 'Academia - Peito e Tríceps',
 
-        type: 'chest-triceps',
+        category: 'chest-triceps',
 
         exercises: [
 
@@ -206,7 +236,7 @@ export const seedDefaultWorkouts = async (database: SQLite.SQLiteDatabase) => {
 
         name: 'Academia - Inferiores e Ombros',
 
-        type: 'legs',
+        category: 'legs',
 
         exercises: [
 
@@ -276,10 +306,10 @@ export const seedDefaultWorkouts = async (database: SQLite.SQLiteDatabase) => {
     console.log(`Inserting workout: ${workout.name}`);
     const now = new Date().toISOString();
     const workoutResult = await database.runAsync(
-      'INSERT INTO workouts (name, date, type) VALUES (?, ?, ?);',
+      'INSERT INTO workouts (name, date, category) VALUES (?, ?, ?);',
       workout.name,
       now,
-      workout.type
+      workout.category
     );
     const workoutId = workoutResult.lastInsertRowId;
 

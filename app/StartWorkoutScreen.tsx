@@ -16,9 +16,13 @@ export default function StartWorkoutScreen() {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [startTime] = useState(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isWorkoutFinished, setIsWorkoutFinished] = useState(false);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (isWorkoutFinished) {
+        return;
+      }
       e.preventDefault();
       Alert.alert(
         'Descartar treino?',
@@ -42,7 +46,7 @@ export default function StartWorkoutScreen() {
       unsubscribe();
       clearInterval(interval);
     };
-  }, [navigation]);
+  }, [navigation, isWorkoutFinished]);
 
   const formatTime = (seconds: number) => {
     const getSeconds = `0${seconds % 60}`.slice(-2);
@@ -116,6 +120,7 @@ export default function StartWorkoutScreen() {
           text: 'Finalizar',
           onPress: async () => {
             await storage.saveWorkoutToHistory(currentWorkout, new Date().toISOString(), duration);
+            setIsWorkoutFinished(true);
             router.replace({
               pathname: '/WorkoutSummaryScreen',
               params: { workoutName: currentWorkout.name, workoutDuration: duration },
