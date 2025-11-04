@@ -18,15 +18,18 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - ✅ Preenchimento automático de nome, imagem e séries ao selecionar do catálogo
 
 ### Execução de Treino
+- ✅ **Cronômetro de Treino:**  Um cronômetro é iniciado junto com o treino e continua em segundo plano.
+- ✅ **Tela de Resumo:** Ao finalizar, uma tela exibe o nome e a duração total do treino.
 - ✅ Registrar progresso em tempo real (reps e peso)
 - ✅ Salvar o progresso para referência futura (sobrecarga progressiva)
 - ✅ Marcar séries como concluídas com feedback visual e tátil (vibração)
-- ✅ Timer de descanso automático iniciado após cada série
+- ✅ **Timer de Descanso Aprimorado:** O timer de descanso agora funciona corretamente mesmo se o aplicativo for para o segundo plano.
 - ✅ Navegação fluida entre os exercícios do treino (carrossel)
 - ✅ Alertas de confirmação inteligentes para evitar perda de dados
 
 ### Histórico de Treinos
 - ✅ Registro detalhado de treinos concluídos, incluindo exercícios, séries, repetições e pesos.
+- ✅ **Duração do Treino:** A duração total de cada treino agora é salva no histórico.
 - ✅ Visualização do histórico em um calendário interativo.
 - ✅ Armazenamento persistente no banco de dados SQLite.
 
@@ -59,10 +62,16 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - Modal de seleção de exercícios com suporte à seleção múltipla, busca e filtro.
 
 ### Tela de Execução de Treino
+- Cronômetro geral do treino visível no cabeçalho.
 - Interface focada no exercício atual, com navegação em carrossel.
 - Inputs editáveis para registrar repetições e pesos de cada série.
 - Botão para marcar série como concluída, com mudança de estado visual e feedback tátil.
 - Timer de descanso automático com opção de "Pular".
+
+### Tela de Resumo do Treino
+- Exibida ao finalizar um treino.
+- Mostra o nome do treino e a duração total.
+- Botão para retornar à tela inicial.
 
 ### Tela de Histórico (Calendar)
 - Visualização de treinos concluídos em um calendário.
@@ -107,6 +116,7 @@ A estrutura do banco de dados é a seguinte:
 | workout_id      | INTEGER | Chave estrangeira para a tabela `workouts`  |
 | completed_at    | TEXT    | Data e hora de conclusão do treino (ISO 8601) |
 | workout_details | TEXT    | Detalhes completos do treino em formato JSON |
+| duration        | INTEGER | Duração do treino em segundos               |
 
 ## 🚀 Como Executar
 

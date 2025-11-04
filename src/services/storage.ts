@@ -46,6 +46,7 @@ export interface WorkoutLog {
   name: string;
   completedAt: string;
   exercises: Exercise[];
+  duration?: number;
 }
 
 const DEFAULT_WORKOUTS: Omit<Workout, 'id' | 'createdAt' | 'updatedAt'>[] = [
@@ -440,15 +441,15 @@ export const storage = {
     });
   },
 
-  async saveWorkoutToHistory(workout: Workout, completedAt?: string): Promise<void> {
+  async saveWorkoutToHistory(workout: Workout, completedAt?: string, duration?: number): Promise<void> {
     try {
       const db = getDb();
       const completed_at = completedAt || new Date().toISOString();
       const workout_details = JSON.stringify(workout.exercises);
       
       await db.runAsync(
-        'INSERT INTO workout_logs (workout_id, completed_at, workout_details) VALUES (?, ?, ?);',
-        [parseInt(workout.id, 10), completed_at, workout_details]
+        'INSERT INTO workout_logs (workout_id, completed_at, workout_details, duration) VALUES (?, ?, ?, ?);',
+        [parseInt(workout.id, 10), completed_at, workout_details, duration]
       );
     } catch (error) {
       console.error('Erro ao salvar no histórico:', error);
@@ -465,7 +466,8 @@ export const storage = {
           wl.workout_id as workoutId,
           w.name as name,
           wl.completed_at as completedAt,
-          wl.workout_details as exercises
+          wl.workout_details as exercises,
+          wl.duration as duration
         FROM workout_logs wl
         JOIN workouts w ON wl.workout_id = w.id
         ORDER BY wl.completed_at DESC;
