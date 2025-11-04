@@ -325,11 +325,10 @@ export const storage = {
           id: row.workout_id.toString(),
           name: row.workout_name,
           date: row.date,
-          category: row.category,
-          exercises: [],
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-        };
+                    category: row.category,
+                    exercises: [],
+                    createdAt: row.createdAt,
+                    updatedAt: row.updatedAt,        };
         workoutsMap.set(row.workout_id, workout);
       }
 
