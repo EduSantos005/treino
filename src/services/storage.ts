@@ -471,12 +471,29 @@ export const storage = {
         ORDER BY wl.completed_at DESC;
       `);
 
-      return logs.map(log => ({
-        ...log,
-        logId: log.logId.toString(),
-        workoutId: log.workoutId.toString(),
-        exercises: JSON.parse(log.exercises) // Parse a string JSON
-      }));
+      return logs.map(log => {
+        let parsedExercises = [];
+        try {
+          const rawDetails = log.exercises;
+          if (rawDetails) {
+            const parsed = JSON.parse(rawDetails);
+            if (Array.isArray(parsed)) {
+              parsedExercises = parsed;
+            } else {
+              console.warn('Parsed workout_details is not an array:', parsed);
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing workout_details:', e, 'Raw data:', log.exercises);
+        }
+
+        return {
+          ...log,
+          logId: log.logId.toString(),
+          workoutId: log.workoutId.toString(),
+          exercises: parsedExercises
+        };
+      });
     } catch (error) {
       console.error('Erro ao buscar histórico de treinos:', error);
       return [];

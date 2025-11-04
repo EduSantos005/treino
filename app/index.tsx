@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import AddWorkoutScreen from '../src/screens/AddWorkoutScreen';
 import CalendarScreen from '../src/screens/CalendarScreen';
 import CreateExerciseScreen from '../src/screens/CreateExerciseScreen';
@@ -8,7 +8,7 @@ import EditExerciseScreen from '../src/screens/EditExerciseScreen';
 import ExerciseLibraryScreen from '../src/screens/ExerciseLibraryScreen';
 import HomeScreen from '../src/screens/HomeScreen';
 import StartWorkoutScreen from '../src/screens/StartWorkoutScreen';
-import { initDB, seedDefaultWorkouts, clearDatabase } from '../src/services/database';
+import { initDB, seedDefaultWorkouts } from '../src/services/database';
 import { RootStackParamList } from '../src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -20,7 +20,7 @@ export default function Index() {
     const initializeDB = async () => {
       try {
         const database = await initDB();
-        await clearDatabase(database); // Apenas para desenvolvimento, remova em produção
+        //await clearDatabase(database); // Apenas para desenvolvimento, remova em produção
         await seedDefaultWorkouts(database);
         console.log('Banco de dados inicializado e populado');
       } catch (error) {

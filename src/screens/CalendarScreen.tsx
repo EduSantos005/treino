@@ -29,11 +29,17 @@ export default function CalendarScreen() {
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isModalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const baseMarkings = history.reduce((acc, log) => {
-      const dateString = log.completedAt.split('T')[0];
-      acc[dateString] = { ...acc[dateString], marked: true, dotColor: '#007AFF' };
+      const localDate = new Date(log.completedAt);
+      const year = localDate.getFullYear();
+      const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = localDate.getDate().toString().padStart(2, '0');
+      const localDateString = `${year}-${month}-${day}`;
+
+      acc[localDateString] = { ...acc[localDateString], marked: true, dotColor: '#007AFF' };
       return acc;
     }, {} as MarkedDates);
 
@@ -48,12 +54,14 @@ export default function CalendarScreen() {
   }, [history, selectedDate]);
 
   const loadData = async () => {
+    setLoading(true);
     try {
       const db = getDb();
       // Fetch all available workouts with their exercises and sets
       const rawWorkouts = await db.getAllAsync<any>(
         `SELECT
           w.id as workout_id,
+          w.name as workout_name,
           w.date,
           w.type,
           e.id as exercise_id,
@@ -68,27 +76,31 @@ export default function CalendarScreen() {
         ORDER BY w.id, e.id, s.id;`
       );
 
-      const workoutsMap = new Map<number, Workout>();
+      const workoutsMap = new Map<string, Workout>();
       rawWorkouts.forEach((row: any) => {
         if (!row.workout_id) return;
 
-        let workout = workoutsMap.get(row.workout_id);
+        let workout = workoutsMap.get(row.workout_id.toString());
         if (!workout) {
           workout = {
-            id: row.workout_id,
+            id: row.workout_id.toString(),
             date: row.date,
             type: row.type,
             name: row.workout_name,
             exercises: [],
+            // Esses campos são do storage, podem não estar no DB da mesma forma
+            category: row.type,
+            createdAt: row.date,
+            updatedAt: row.date,
           };
-          workoutsMap.set(row.workout_id, workout);
+          workoutsMap.set(row.workout_id.toString(), workout);
         }
 
         if (row.exercise_id) {
-          let exercise = workout.exercises.find(ex => ex.id === row.exercise_id);
+          let exercise = workout.exercises.find(ex => ex.id === row.exercise_id.toString());
           if (!exercise) {
             exercise = {
-              id: row.exercise_id,
+              id: row.exercise_id.toString(),
               name: row.exercise_name,
               category: row.exercise_category,
               sets: [],
@@ -99,20 +111,25 @@ export default function CalendarScreen() {
           if (row.set_id) {
             exercise.sets.push({
               id: row.set_id,
-              reps: row.reps,
-              weight: row.weight,
+              reps: row.reps.toString(),
+              weight: row.weight.toString(),
+              number: exercise.sets.length + 1,
+              weightUnit: 'kg' // Assumindo kg como padrão
             });
           }
         }
       });
       setWorkouts(Array.from(workoutsMap.values()));
 
+      // Fetch workout history logs using the storage function
       const historyData = await storage.getWorkoutHistory();
       setHistory(historyData);
 
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível carregar os dados do histórico.');
       console.error('Error loading calendar data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -129,9 +146,9 @@ export default function CalendarScreen() {
     const db = getDb();
     await db.runAsync(
       'INSERT INTO workout_logs (workout_id, completed_at, workout_details) VALUES (?, ?, ?);',
-      workout.id,
+      parseInt(workout.id, 10),
       completedAt.toISOString(),
-      JSON.stringify(workout) // Store full workout details as JSON
+      JSON.stringify(workout.exercises) // Store only exercises as JSON
     );
 
     setModalVisible(false);
@@ -162,7 +179,14 @@ export default function CalendarScreen() {
   };
 
   const workoutsForSelectedDate = selectedDate
-    ? history.filter(log => log.completedAt.startsWith(selectedDate))
+    ? history.filter(log => {
+        const localDate = new Date(log.completedAt);
+        const year = localDate.getFullYear();
+        const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = localDate.getDate().toString().padStart(2, '0');
+        const localDateString = `${year}-${month}-${day}`;
+        return localDateString === selectedDate;
+      })
     : [];
 
   return (
@@ -188,10 +212,10 @@ export default function CalendarScreen() {
               <Text style={styles.logDate}>
                 {new Date(log.completedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </Text>
-              {log.exercises.map(ex => (
+              {(log.exercises || []).map(ex => (
                 <View key={ex.id} style={styles.exerciseContainer}>
                   <Text style={styles.exerciseName}>{ex.name}</Text>
-                  {ex.sets.map(set => (
+                  {(ex.sets || []).map(set => (
                     <Text key={set.id} style={styles.setText}>
                       Série {set.reps} reps com {set.weight} {set.weightUnit}
                     </Text>
