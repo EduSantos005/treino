@@ -10,6 +10,7 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - ✅ Editar treinos existentes
 - ✅ Excluir treinos
 - ✅ Armazenamento local persistente
+- ✅ **Imagens de Exercícios:** As imagens dos exercícios são salvas e exibidas corretamente nas telas de treino e execução.
 
 ### Gestão de Exercícios
 - ✅ Adicionar múltiplos exercícios a um treino de uma só vez
@@ -24,12 +25,19 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - ✅ Navegação fluida entre os exercícios do treino (carrossel)
 - ✅ Alertas de confirmação inteligentes para evitar perda de dados
 
+### Histórico de Treinos
+- ✅ Registro detalhado de treinos concluídos, incluindo exercícios, séries, repetições e pesos.
+- ✅ Visualização do histórico em um calendário interativo.
+- ✅ Armazenamento persistente no banco de dados SQLite.
+
 ### Interface e Usabilidade
 - ✅ Design moderno e intuitivo
 - ✅ Navegação fluida entre campos com o teclado (botão "Next")
 - ✅ Ajuste automático da tela para o teclado não cobrir os campos
 - ✅ Validação de dados e mensagens de feedback claras
 - ✅ Suporte a gestos no carrossel de exercícios
+- ✅ **Posicionamento de Títulos:** Ajuste fino no posicionamento dos títulos das telas para uma melhor estética e consistência.
+- ✅ **Navegação Aprimorada:** Texto do atalho 'Biblioteca' alterado para 'Exercícios' para maior clareza.
 
 ## 🛠 Tecnologias Utilizadas
 
@@ -56,33 +64,49 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - Botão para marcar série como concluída, com mudança de estado visual e feedback tátil.
 - Timer de descanso automático com opção de "Pular".
 
+### Tela de Histórico (Calendar)
+- Visualização de treinos concluídos em um calendário.
+- Detalhes dos treinos registrados para cada dia.
+
 ## 💾 Armazenamento
 
-Os dados são persistidos localmente usando **Expo-SQLite**, garantindo que o aplicativo funcione 100% offline. A estrutura do banco de dados é a seguinte:
+Os dados são persistidos localmente usando **Expo-SQLite**, garantindo que o aplicativo funcione 100% offline. O histórico de treinos agora também é armazenado no SQLite para maior robustez e consistência. Exercícios personalizados ainda utilizam `AsyncStorage`.
+
+A estrutura do banco de dados é a seguinte:
 
 **Tabela `workouts`**
-| Coluna | Tipo    | Descrição                               |
-|--------|---------|-------------------------------------------|
-| id     | INTEGER | Chave primária, auto-incremento           |
-| date   | TEXT    | Data do treino (ISO 8601)                 |
-| type   | TEXT    | Categoria do treino (ex: 'chest-triceps') |
+| Coluna | Tipo    | Descrição                                       |
+|--------|---------|-------------------------------------------------|
+| id     | INTEGER | Chave primária, auto-incremento                 |
+| name   | TEXT    | Nome do treino                                  |
+| date   | TEXT    | Data de criação/última atualização do treino (ISO 8601) |
+| type   | TEXT    | Categoria do treino (ex: 'chest-triceps')       |
 
 **Tabela `exercises`**
-| Coluna   | Tipo    | Descrição                                 |
-|----------|---------|---------------------------------------------|
-| id       | INTEGER | Chave primária, auto-incremento             |
-| name     | TEXT    | Nome do exercício (único)                   |
-| category | TEXT    | Grupo muscular principal (ex: 'peito')      |
+| Coluna    | Tipo    | Descrição                                     |
+|-----------|---------|-----------------------------------------------|
+| id        | INTEGER | Chave primária, auto-incremento               |
+| name      | TEXT    | Nome do exercício (único)                     |
+| category  | TEXT    | Grupo muscular principal (ex: 'peito')        |
+| image_uri | TEXT    | URI da imagem do exercício                    |
 
 **Tabela `sets`**
-| Coluna      | Tipo    | Descrição                               |
-|-------------|---------|-------------------------------------------|
-| id          | INTEGER | Chave primária, auto-incremento           |
+| Coluna      | Tipo    | Descrição                                   |
+|-------------|---------|---------------------------------------------|
+| id          | INTEGER | Chave primária, auto-incremento             |
 | workout_id  | INTEGER | Chave estrangeira para a tabela `workouts`  |
 | exercise_id | INTEGER | Chave estrangeira para a tabela `exercises` |
-| reps        | INTEGER | Número de repetições realizadas           |
-| weight      | REAL    | Peso utilizado (em kg)                    |
+| reps        | INTEGER | Número de repetições realizadas             |
+| weight      | REAL    | Peso utilizado (em kg)                      |
+| weight_unit | TEXT    | Unidade de peso (ex: 'kg', 'plates')        |
 
+**Tabela `workout_logs`**
+| Coluna          | Tipo    | Descrição                                   |
+|-----------------|---------|---------------------------------------------|
+| id              | INTEGER | Chave primária, auto-incremento             |
+| workout_id      | INTEGER | Chave estrangeira para a tabela `workouts`  |
+| completed_at    | TEXT    | Data e hora de conclusão do treino (ISO 8601) |
+| workout_details | TEXT    | Detalhes completos do treino em formato JSON |
 
 ## 🚀 Como Executar
 
@@ -96,6 +120,8 @@ npm install
 npx expo start
 ```
 
+**Importante:** Durante o desenvolvimento, o banco de dados é limpo e populado com dados padrão a cada inicialização (`await clearDatabase(database);` em `app/index.tsx`). Para builds de produção, **remova ou comente esta linha** para preservar os dados do usuário.
+
 3. Use o aplicativo Expo Go no seu dispositivo para escanear o QR Code.
 
 ## 📝 Próximos Passos
@@ -105,7 +131,6 @@ npx expo start
   - [ ] Gráficos de evolução
   - [ ] Recordes pessoais
 - [ ] Adicionar mais exercícios ao catálogo
-- [ ] Adicionar imagens de um meio legal
 - [ ] Melhorias nas anotações:
   - [ ] Links para vídeos
 - [ ] Backup e sincronização:

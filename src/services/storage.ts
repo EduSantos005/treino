@@ -23,6 +23,7 @@ export interface Set {
 export interface Exercise {
   id: string;
   name: string;
+  category?: string;
   sets: Set[];
   imageUri?: string;
   notes?: string;
@@ -376,7 +377,7 @@ export const storage = {
     const workoutDbId = parseInt(workout.id, 10); // Converter para número
 
     await database.runAsync(
-      'UPDATE workouts SET name = ?, category = ?, updatedAt = ? WHERE id = ?',
+      'UPDATE workouts SET name = ?, type = ?, date = ? WHERE id = ?',
       [workout.name, workout.category, updatedAt, workoutDbId] // Usar workoutDbId
     );
 
@@ -441,15 +442,14 @@ export const storage = {
 
   async saveWorkoutToHistory(workout: Workout, completedAt?: string): Promise<void> {
     try {
-      const history = await this.getWorkoutHistory();
-      const newLog: WorkoutLog = {
-        logId: Date.now().toString(),
-        workoutId: workout.id,
-        name: workout.name,
-        completedAt: completedAt || new Date().toISOString(),
-        exercises: workout.exercises,
-      };
-      await AsyncStorage.setItem(WORKOUT_HISTORY_KEY, JSON.stringify([newLog, ...history]));
+      const db = getDb();
+      const completed_at = completedAt || new Date().toISOString();
+      const workout_details = JSON.stringify(workout.exercises);
+      
+      await db.runAsync(
+        'INSERT INTO workout_logs (workout_id, completed_at, workout_details) VALUES (?, ?, ?);',
+        [parseInt(workout.id, 10), completed_at, workout_details]
+      );
     } catch (error) {
       console.error('Erro ao salvar no histórico:', error);
       throw new Error('Não foi possível salvar o histórico de treino');
@@ -458,8 +458,25 @@ export const storage = {
 
   async getWorkoutHistory(): Promise<WorkoutLog[]> {
     try {
-      const data = await AsyncStorage.getItem(WORKOUT_HISTORY_KEY);
-      return data ? JSON.parse(data) : [];
+      const db = getDb();
+      const logs = await db.getAllAsync<any>(`
+        SELECT
+          wl.id as logId,
+          wl.workout_id as workoutId,
+          w.name as name,
+          wl.completed_at as completedAt,
+          wl.workout_details as exercises
+        FROM workout_logs wl
+        JOIN workouts w ON wl.workout_id = w.id
+        ORDER BY wl.completed_at DESC;
+      `);
+
+      return logs.map(log => ({
+        ...log,
+        logId: log.logId.toString(),
+        workoutId: log.workoutId.toString(),
+        exercises: JSON.parse(log.exercises) // Parse a string JSON
+      }));
     } catch (error) {
       console.error('Erro ao buscar histórico de treinos:', error);
       return [];
@@ -468,9 +485,8 @@ export const storage = {
 
   async deleteWorkoutFromHistory(logId: string): Promise<void> {
     try {
-      const history = await this.getWorkoutHistory();
-      const updatedHistory = history.filter((log) => log.logId !== logId);
-      await AsyncStorage.setItem(WORKOUT_HISTORY_KEY, JSON.stringify(updatedHistory));
+      const db = getDb();
+      await db.runAsync('DELETE FROM workout_logs WHERE id = ?;', [parseInt(logId, 10)]);
     } catch (error) {
       console.error('Erro ao excluir do histórico:', error);
       throw new Error('Não foi possível excluir o registro do histórico');

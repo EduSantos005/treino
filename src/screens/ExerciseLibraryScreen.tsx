@@ -75,7 +75,7 @@ export default function ExerciseLibraryScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['right', 'left']}>
       <View style={styles.header}>
         <Text style={styles.title}>Biblioteca de Exercícios</Text>
         <TouchableOpacity 
@@ -122,7 +122,7 @@ export default function ExerciseLibraryScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 10, paddingTop: 8 },
   title: { fontSize: 24, fontWeight: 'bold' },
   addButton: { backgroundColor: '#007AFF', padding: 10, borderRadius: 8 },
   addButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },

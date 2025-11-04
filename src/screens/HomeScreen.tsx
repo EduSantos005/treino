@@ -142,7 +142,7 @@ export default function HomeScreen() {
 
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['right', 'left']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Meus Treinos</Text>
@@ -151,7 +151,7 @@ export default function HomeScreen() {
               <Text style={styles.headerLinkText}>Histórico</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('ExerciseLibrary')}>
-              <Text style={styles.headerLinkText}>Biblioteca</Text>
+              <Text style={styles.headerLinkText}>Exercícios</Text>
             </TouchableOpacity>
           </View>
         </View>

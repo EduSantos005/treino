@@ -128,9 +128,28 @@ export default function AddWorkoutScreen() {
       const workoutId = workoutResult.lastInsertRowId;
 
       for (const exercise of exercises) {
-        await db.runAsync('INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);', exercise.name, 'general');
-        const exerciseResult = await db.getFirstAsync<any>('SELECT id FROM exercises WHERE name = ?;', exercise.name);
-        const exerciseId = exerciseResult?.id; // Usar o ID retornado pelo banco de dados
+        let exerciseId: number | undefined;
+        const existingExercise = await db.getFirstAsync<{ id: number }>(
+          'SELECT id FROM exercises WHERE name = ?;',
+          exercise.name
+        );
+
+        if (existingExercise) {
+          exerciseId = existingExercise.id;
+          await db.runAsync(
+            'UPDATE exercises SET image_uri = ? WHERE id = ?;',
+            exercise.imageUri || null,
+            exerciseId
+          );
+        } else {
+          const exerciseResult = await db.runAsync(
+            'INSERT INTO exercises (name, category, image_uri) VALUES (?, ?, ?);',
+            exercise.name,
+            'general', // Ou use uma categoria real se disponível
+            exercise.imageUri || null
+          );
+          exerciseId = exerciseResult.lastInsertRowId;
+        }
 
         if (exerciseId) {
           for (const set of exercise.sets) {
@@ -151,7 +170,7 @@ export default function AddWorkoutScreen() {
 
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['right', 'left']}>
       <KeyboardAvoidingView 
         style={styles.mainContainer} 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -331,7 +350,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 8,
   },
   title: {
     fontSize: 24,

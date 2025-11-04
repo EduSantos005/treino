@@ -72,7 +72,7 @@ export default function Index() {
         name="ExerciseLibrary" 
         component={ExerciseLibraryScreen} 
         options={{ 
-          title: 'Biblioteca',
+          title: 'Exercícios',
           headerBackTitle: 'Voltar'
         }}
       />

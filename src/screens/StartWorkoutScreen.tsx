@@ -244,6 +244,7 @@ export default function StartWorkoutScreen() {
           }]
         );
       } catch (error) {
+        console.error("Error saving workout:", error);
         Alert.alert('Erro', 'Não foi possível salvar o treino.');
       }
     };

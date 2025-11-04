@@ -1,28 +1,16 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getCategoryLabel } from '../constants/workoutTypes';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Modal,ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { MarkedDates } from 'react-native-calendars/src/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDb } from '../services/database';
+import { storage, WorkoutLog, Workout } from '../services/storage';
 
 // Define types based on database schema
 type Set = { id: number; reps: number; weight: number };
 type Exercise = { id: number; name: string; category: string; sets: Set[] };
-type Workout = {
-  id: number;
-  date: string;
-  type: string;
-  name: string;
-  exercises: Exercise[];
-};
-type WorkoutLog = {
-  id: number;
-  workoutId: number;
-  completedAt: string;
-  workoutDetails: Workout; // Storing the full workout object as JSON
-};
 
 // Configuração de localidade para o calendário
 LocaleConfig.locales['pt-br'] = {
@@ -90,7 +78,7 @@ export default function CalendarScreen() {
             id: row.workout_id,
             date: row.date,
             type: row.type,
-            name: `Treino de ${row.type}`,
+            name: row.workout_name,
             exercises: [],
           };
           workoutsMap.set(row.workout_id, workout);
@@ -119,9 +107,8 @@ export default function CalendarScreen() {
       });
       setWorkouts(Array.from(workoutsMap.values()));
 
-      // Fetch workout history logs
-      const historyData = await db.getAllAsync<WorkoutLog>('SELECT id, workout_id as workoutId, completed_at as completedAt, workout_details as workoutDetails FROM workout_logs;');
-      setHistory(historyData.map(log => ({ ...log, workoutDetails: JSON.parse(log.workoutDetails) })));
+      const historyData = await storage.getWorkoutHistory();
+      setHistory(historyData);
 
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível carregar os dados do histórico.');
@@ -151,7 +138,7 @@ export default function CalendarScreen() {
     navigation.goBack();
   };
 
-  const handleDeleteLog = async (logId: number) => {
+  const handleDeleteLog = async (logId: string) => {
     Alert.alert(
       'Excluir Registro',
       'Tem certeza que deseja excluir este registro de treino? Esta ação não pode ser desfeita.',
@@ -162,8 +149,7 @@ export default function CalendarScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const db = getDb();
-              await db.runAsync('DELETE FROM workout_logs WHERE id = ?;', logId);
+              await storage.deleteWorkoutFromHistory(logId);
               loadData();
             } catch (error) {
               Alert.alert('Erro', 'Não foi possível excluir o registro.');
@@ -192,22 +178,22 @@ export default function CalendarScreen() {
       <ScrollView style={styles.detailsContainer}>
         {selectedDate && workoutsForSelectedDate.length > 0 ? (
           workoutsForSelectedDate.map(log => (
-            <View key={log.id} style={styles.logCard}>
+            <View key={log.logId} style={styles.logCard}>
               <View style={styles.logCardHeader}>
-                <Text style={styles.logTitle}>{log.workoutDetails.name}</Text>
-                <TouchableOpacity onPress={() => handleDeleteLog(log.id)}>
+                <Text style={styles.logTitle}>{log.name}</Text>
+                <TouchableOpacity onPress={() => handleDeleteLog(log.logId)}>
                   <Text style={styles.deleteLogText}>Excluir</Text>
                 </TouchableOpacity>
               </View>
               <Text style={styles.logDate}>
                 {new Date(log.completedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </Text>
-              {log.workoutDetails.exercises.map(ex => (
+              {log.exercises.map(ex => (
                 <View key={ex.id} style={styles.exerciseContainer}>
                   <Text style={styles.exerciseName}>{ex.name}</Text>
                   {ex.sets.map(set => (
                     <Text key={set.id} style={styles.setText}>
-                      Série {set.reps} reps com {set.weight} kg
+                      Série {set.reps} reps com {set.weight} {set.weightUnit}
                     </Text>
                   ))}
                 </View>

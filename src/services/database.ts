@@ -20,6 +20,24 @@ export const getDb = (): SQLite.SQLiteDatabase => {
   return db;
 };
 
+import { exerciseCatalog } from '../constants/exerciseCatalog';
+
+// ... (rest of the file)
+
+const findExerciseInCatalog = (name: string) => {
+  const found = exerciseCatalog.find(ex => ex.name.toLowerCase() === name.toLowerCase());
+  if (!found) {
+    console.warn(`Exercise "${name}" not found in catalog.`);
+    return {
+      name: name,
+      imageUri: '',
+      defaultSets: 3,
+      defaultReps: 10,
+    };
+  }
+  return found;
+};
+
 export const seedDefaultWorkouts = async (database: SQLite.SQLiteDatabase) => {
   const result = await database.getFirstAsync<{ count: number }>('SELECT COUNT(id) as count FROM workouts;');
   const count = result?.count || 0;
@@ -31,178 +49,219 @@ export const seedDefaultWorkouts = async (database: SQLite.SQLiteDatabase) => {
 
   console.log('Seeding default workouts...');
 
-  const defaultWorkouts = [
-    {
-      name: 'Academia - Peito e Tríceps',
-      type: 'chest-triceps',
-      exercises: [
-        {
-          name: 'Supino Reto com Barra',
-          sets: [
-            { reps: 10, weight: 10, weight_unit: 'kg' },
-            { reps: 8, weight: 15, weight_unit: 'kg' },
-            { reps: 8, weight: 15, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Supino Inclinado com Halteres',
-          sets: [
-            { reps: 10, weight: 20, weight_unit: 'kg' },
-            { reps: 8, weight: 22, weight_unit: 'kg' },
-            { reps: 8, weight: 24, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Voador',
-          sets: [
-            { reps: 10, weight: 60, weight_unit: 'kg' },
-            { reps: 8, weight: 65, weight_unit: 'kg' },
-            { reps: 8, weight: 70, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Cross na Polia Alta',
-          sets: [
-            { reps: 10, weight: 3, weight_unit: 'plates' },
-            { reps: 8, weight: 3, weight_unit: 'plates' },
-            { reps: 8, weight: 4, weight_unit: 'plates' }
-          ]
-        },
-        {
-          name: 'Tríceps Pulley na Polia',
-          sets: [
-            { reps: 10, weight: 5, weight_unit: 'plates' },
-            { reps: 8, weight: 6, weight_unit: 'plates' },
-            { reps: 8, weight: 7, weight_unit: 'plates' }
-          ]
-        },
-        {
-          name: 'Tríceps Francês com Halter',
-          sets: [
-            { reps: 10, weight: 14, weight_unit: 'kg' },
-            { reps: 8, weight: 16, weight_unit: 'kg' },
-            { reps: 8, weight: 18, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Tríceps Testa com Barra',
-          sets: [
-            { reps: 10, weight: 10, weight_unit: 'kg' },
-            { reps: 8, weight: 12, weight_unit: 'kg' },
-            { reps: 8, weight: 14, weight_unit: 'kg' }
-          ]
-        }
-      ]
-    },
-    {
-      name: 'Academia - Costas e Bíceps',
-      type: 'back-biceps',
-      exercises: [
-        {
-          name: 'Puxada alta',
-          sets: [
-            { reps: 10, weight: 35, weight_unit: 'kg' },
-            { reps: 8, weight: 40, weight_unit: 'kg' },
-            { reps: 8, weight: 45, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Remada baixa',
-          sets: [
-            { reps: 10, weight: 40, weight_unit: 'kg' },
-            { reps: 8, weight: 45, weight_unit: 'kg' },
-            { reps: 8, weight: 50, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Remada Curvada com Barra',
-          sets: [
-            { reps: 10, weight: 20, weight_unit: 'kg' },
-            { reps: 8, weight: 25, weight_unit: 'kg' },
-            { reps: 8, weight: 30, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Bíceps Inclinado com Halteres',
-          sets: [
-            { reps: 10, weight: 14, weight_unit: 'kg' },
-            { reps: 10, weight: 14, weight_unit: 'kg' },
-            { reps: 10, weight: 14, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Bíceps Scott',
-          sets: [
-            { reps: 10, weight: 4, weight_unit: 'plates' },
-            { reps: 8, weight: 5, weight_unit: 'plates' },
-            { reps: 8, weight: 6, weight_unit: 'plates' }
-          ]
-        },
-        {
-          name: 'Rosca Concentrada',
-          sets: [
-            { reps: 10, weight: 8, weight_unit: 'kg' },
-            { reps: 8, weight: 10, weight_unit: 'kg' },
-            { reps: 8, weight: 12, weight_unit: 'kg' }
-          ]
-        }
-      ]
-    },
-    {
-      name: 'Academia - Inferiores e Ombros',
-      type: 'legs',
-      exercises: [
-        {
-          name: 'Abdutora',
-          sets: [
-            { reps: 15, weight: 5, weight_unit: 'plates' },
-            { reps: 15, weight: 6, weight_unit: 'plates' },
-            { reps: 15, weight: 6, weight_unit: 'plates' }
-          ]
-        },
-        {
-          name: 'Adutora',
-          sets: [
-            { reps: 15, weight: 6, weight_unit: 'plates' },
-            { reps: 15, weight: 7, weight_unit: 'plates' },
-            { reps: 15, weight: 8, weight_unit: 'plates' }
-          ]
-        },
-        {
-          name: 'Leg Articulado',
-          sets: [
-            { reps: 15, weight: 50, weight_unit: 'kg' },
-            { reps: 15, weight: 60, weight_unit: 'kg' },
-            { reps: 15, weight: 60, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Passada com halteres',
-          sets: [
-            { reps: 30, weight: 10, weight_unit: 'kg' },
-            { reps: 30, weight: 10, weight_unit: 'kg' },
-            { reps: 30, weight: 10, weight_unit: 'kg' }
-          ]
-        },
-        {
-          name: 'Extensora',
-          sets: [
-            { reps: 10, weight: 10, weight_unit: 'plates' },
-            { reps: 10, weight: 12, weight_unit: 'plates' },
-            { reps: 10, weight: 13, weight_unit: 'plates' }
-          ]
-        },
-        {
-          name: 'Mesa Flexora',
-          sets: [
-            { reps: 10, weight: 6, weight_unit: 'plates' },
-            { reps: 10, weight: 7, weight_unit: 'plates' },
-            { reps: 10, weight: 7, weight_unit: 'plates' }
-          ]
-        }
-      ]
-    }
-  ];
+    const defaultWorkouts = [
+
+      {
+
+        name: 'Academia - Costas e Bíceps',
+
+        type: 'back-biceps',
+
+        exercises: [
+
+          findExerciseInCatalog('Puxada Alta pela Frente'),
+
+          findExerciseInCatalog('Remada Baixa'),
+
+          findExerciseInCatalog('Puxada Invertida (Máquina)'),
+
+          findExerciseInCatalog('Pull Down na Polia (Braço Reto)'),
+
+          findExerciseInCatalog('Bíceps Inclinado com Halteres'),
+
+          findExerciseInCatalog('Bíceps Scott'),
+
+        ].map((ex, index) => {
+
+          let setsData = [];
+
+          if (ex.name === 'Puxada Alta pela Frente') {
+
+            setsData = [{ reps: 10, weight: 35, weight_unit: 'kg' }, { reps: 8, weight: 40, weight_unit: 'kg' }, { reps: 8, weight: 45, weight_unit: 'kg' }];
+
+          } else if (ex.name === 'Remada Baixa') {
+
+            setsData = [{ reps: 10, weight: 40, weight_unit: 'kg' }, { reps: 8, weight: 45, weight_unit: 'kg' }, { reps: 8, weight: 50, weight_unit: 'kg' }];
+
+          } else if (ex.name === 'Puxada Invertida (Máquina)') {
+
+            setsData = [{ reps: 10, weight: 30, weight_unit: 'kg' }, { reps: 8, weight: 35, weight_unit: 'kg' }, { reps: 8, weight: 45, weight_unit: 'kg' }];
+
+          } else if (ex.name === 'Pull Down na Polia (Braço Reto)') {
+
+            setsData = [{ reps: 12, weight: 6, weight_unit: 'plates' }, { reps: 12, weight: 6, weight_unit: 'plates' }, { reps: 12, weight: 7, weight_unit: 'plates' }];
+
+          } else if (ex.name === 'Bíceps Inclinado com Halteres') {
+
+            setsData = [{ reps: 10, weight: 14, weight_unit: 'kg' }, { reps: 10, weight: 14, weight_unit: 'kg' }, { reps: 10, weight: 14, weight_unit: 'kg' }];
+
+          } else if (ex.name === 'Bíceps Scott') {
+
+            setsData = [{ reps: 10, weight: 4, weight_unit: 'plates' }, { reps: 8, weight: 5, weight_unit: 'plates' }, { reps: 8, weight: 6, weight_unit: 'plates' }];
+
+          } else {
+
+            setsData = Array.from({ length: ex.defaultSets }, (_, i) => ({ number: i + 1, reps: ex.defaultReps, weight: 10, weight_unit: 'kg' }));
+
+          }
+
+          return {
+
+            name: ex.name,
+
+            imageUri: ex.imageUri,
+
+            sets: setsData.map((set, i) => ({ ...set, number: i + 1 })),
+
+          };
+
+        }),
+
+      },
+
+      {
+
+        name: 'Academia - Peito e Tríceps',
+
+        type: 'chest-triceps',
+
+        exercises: [
+
+          findExerciseInCatalog('Supino Reto com Barra'),
+
+          findExerciseInCatalog('Supino Inclinado com Halteres'),
+
+          findExerciseInCatalog('Voador (Pec Deck)'),
+
+          findExerciseInCatalog('Cross na Polia Alta'),
+
+          findExerciseInCatalog('Elevação Lateral na Polia'),
+
+          findExerciseInCatalog('Tríceps Pulley na Polia'),
+
+          findExerciseInCatalog('Tríceps Francês com Halter'),
+
+        ].map((ex, index) => {
+
+          let setsData = [];
+
+          if (ex.name === 'Supino Reto com Barra') {
+
+            setsData = [{ reps: 10, weight: 10, weight_unit: 'kg' }, { reps: 8, weight: 15, weight_unit: 'kg' }, { reps: 8, weight: 15, weight_unit: 'kg' }];
+
+          } else if (ex.name === 'Supino Inclinado com Halteres') {
+
+            setsData = [{ reps: 10, weight: 20, weight_unit: 'kg' }, { reps: 8, weight: 22, weight_unit: 'kg' }, { reps: 8, weight: 24, weight_unit: 'kg' }];
+
+          } else if (ex.name === 'Voador (Pec Deck)') {
+
+            setsData = [{ reps: 10, weight: 60, weight_unit: 'kg' }, { reps: 8, weight: 65, weight_unit: 'kg' }, { reps: 8, weight: 70, weight_unit: 'kg' }];
+
+          } else if (ex.name === 'Cross na Polia Alta') {
+
+            setsData = [{ reps: 12, weight: 3, weight_unit: 'plates' }, { reps: 12, weight: 3, weight_unit: 'plates' }, { reps: 12, weight: 4, weight_unit: 'plates' }];
+
+          } else if (ex.name === 'Elevação Lateral na Polia') {
+
+            setsData = [{ reps: 12, weight: 2, weight_unit: 'plates' }, { reps: 12, weight: 2, weight_unit: 'plates' }, { reps: 12, weight: 2, weight_unit: 'plates' }];
+
+          } else if (ex.name === 'Tríceps Pulley na Polia') {
+
+            setsData = [{ reps: 12, weight: 5, weight_unit: 'plates' }, { reps: 12, weight: 6, weight_unit: 'plates' }, { reps: 12, weight: 7, weight_unit: 'plates' }];
+
+          } else if (ex.name === 'Tríceps Francês com Halter') {
+
+            setsData = [{ reps: 10, weight: 14, weight_unit: 'kg' }, { reps: 8, weight: 16, weight_unit: 'kg' }, { reps: 8, weight: 18, weight_unit: 'kg' }];
+
+          } else {
+
+            setsData = Array.from({ length: ex.defaultSets }, (_, i) => ({ number: i + 1, reps: ex.defaultReps, weight: 10, weight_unit: 'kg' }));
+
+          }
+
+          return {
+
+            name: ex.name,
+
+            imageUri: ex.imageUri,
+
+            sets: setsData.map((set, i) => ({ ...set, number: i + 1 })),
+
+          };
+
+        }),
+
+      },
+
+      {
+
+        name: 'Academia - Inferiores e Ombros',
+
+        type: 'legs',
+
+        exercises: [
+
+          findExerciseInCatalog('Cadeira Abdutora'),
+
+          findExerciseInCatalog('Cadeira Adutora'),
+
+          findExerciseInCatalog('Leg Press Articulado'),
+
+          findExerciseInCatalog('Passada com Halteres'),
+
+          findExerciseInCatalog('Cadeira Extensora'),
+
+          findExerciseInCatalog('Mesa Flexora'),
+
+        ].map((ex, index) => {
+
+          let setsData = [];
+
+          if (ex.name === 'Cadeira Abdutora') {
+
+            setsData = [{ reps: 15, weight: 5, weight_unit: 'plates' }, { reps: 15, weight: 6, weight_unit: 'plates' }, { reps: 15, weight: 6, weight_unit: 'plates' }];
+
+          } else if (ex.name === 'Cadeira Adutora') {
+
+            setsData = [{ reps: 15, weight: 6, weight_unit: 'plates' }, { reps: 15, weight: 7, weight_unit: 'plates' }, { reps: 15, weight: 8, weight_unit: 'plates' }];
+
+          } else if (ex.name === 'Leg Press Articulado') {
+
+            setsData = [{ reps: 15, weight: 50, weight_unit: 'kg' }, { reps: 15, weight: 60, weight_unit: 'kg' }, { reps: 15, weight: 60, weight_unit: 'kg' }];
+
+          } else if (ex.name === 'Passada com Halteres') {
+
+            setsData = [{ reps: 30, weight: 10, weight_unit: 'kg' }, { reps: 30, weight: 10, weight_unit: 'kg' }, { reps: 30, weight: 10, weight_unit: 'kg' }];
+
+          } else if (ex.name === 'Cadeira Extensora') {
+
+            setsData = [{ reps: 10, weight: 10, weight_unit: 'plates' }, { reps: 10, weight: 12, weight_unit: 'plates' }, { reps: 10, weight: 13, weight_unit: 'plates' }];
+
+          } else if (ex.name === 'Mesa Flexora') {
+
+            setsData = [{ reps: 10, weight: 6, weight_unit: 'plates' }, { reps: 10, weight: 7, weight_unit: 'plates' }, { reps: 10, weight: 7, weight_unit: 'plates' }];
+
+          } else {
+
+            setsData = Array.from({ length: ex.defaultSets }, (_, i) => ({ number: i + 1, reps: ex.defaultReps, weight: 10, weight_unit: 'kg' }));
+
+          }
+
+          return {
+
+            name: ex.name,
+
+            imageUri: ex.imageUri,
+
+            sets: setsData.map((set, i) => ({ ...set, number: i + 1 })),
+
+          };
+
+        }),
+
+      },
+
+    ];
 
   for (const workout of defaultWorkouts) {
     console.log(`Inserting workout: ${workout.name}`);
@@ -217,7 +276,6 @@ export const seedDefaultWorkouts = async (database: SQLite.SQLiteDatabase) => {
 
     if (workoutId) {
       for (const exercise of workout.exercises) {
-        // Insert exercise if it doesn't exist
         let exerciseId: number | null = null;
         const existingExercise = await database.getFirstAsync<{ id: number }>(
           'SELECT id FROM exercises WHERE name = ?;',
@@ -226,11 +284,17 @@ export const seedDefaultWorkouts = async (database: SQLite.SQLiteDatabase) => {
 
         if (existingExercise) {
           exerciseId = existingExercise.id;
+          await database.runAsync(
+            'UPDATE exercises SET image_uri = ? WHERE id = ?;',
+            exercise.imageUri || null,
+            exerciseId
+          );
         } else {
           const exerciseResult = await database.runAsync(
-            'INSERT INTO exercises (name, category) VALUES (?, ?);',
+            'INSERT INTO exercises (name, category, image_uri) VALUES (?, ?, ?);',
             exercise.name,
-            'default' // You might want to define categories for default exercises
+            'default', // You might want to define categories for default exercises
+            exercise.imageUri || null
           );
           exerciseId = exerciseResult.lastInsertRowId;
         }
