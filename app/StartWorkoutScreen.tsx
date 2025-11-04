@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, KeyboardAv
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Exercise, Set, Workout, storage } from '../src/services/storage';
+import { SetRow } from '../src/components/SetRow';
+import { ExerciseImage } from '../src/components/ExerciseImage';
 
 import { useNavigation } from 'expo-router';
 
@@ -19,31 +21,11 @@ export default function StartWorkoutScreen() {
   const [isWorkoutFinished, setIsWorkoutFinished] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (isWorkoutFinished) {
-        return;
-      }
-      e.preventDefault();
-      Alert.alert(
-        'Descartar treino?',
-        'Você tem certeza que quer descartar este treino? Todo o seu progresso será perdido.',
-        [
-          { text: "Não sair", style: 'cancel', onPress: () => {} },
-          {
-            text: 'Descartar',
-            style: 'destructive',
-            onPress: () => navigation.dispatch(e.data.action),
-          },
-        ]
-      );
-    });
-
     const interval = setInterval(() => {
       setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
     }, 1000);
 
     return () => {
-      unsubscribe();
       clearInterval(interval);
     };
   }, [navigation, isWorkoutFinished]);
@@ -56,35 +38,13 @@ export default function StartWorkoutScreen() {
     return `${getHours}:${getMinutes}:${getSeconds}`;
   };
 
-  const [completedSets, setCompletedSets] = useState<string[]>([]);
-
-  const handleToggleSet = (setId: string) => {
-    setCompletedSets(prev => 
-      prev.includes(setId) ? prev.filter(id => id !== setId) : [...prev, setId]
-    );
-  };
-
-  const isSetCompleted = (setId: string) => completedSets.includes(setId);
-
-  const handleRepChange = (exerciseId: string, setId: string, reps: string) => {
+  const handleUpdateSet = (exerciseId: string, updatedSet: Set) => {
     const newWorkout = { ...currentWorkout };
     const exercise = newWorkout.exercises.find(e => e.id === exerciseId);
     if (exercise) {
-      const set = exercise.sets.find(s => s.id === setId);
-      if (set) {
-        set.reps = reps;
-        setCurrentWorkout(newWorkout);
-      }
-    }
-  };
-
-  const handleWeightChange = (exerciseId: string, setId: string, weight: string) => {
-    const newWorkout = { ...currentWorkout };
-    const exercise = newWorkout.exercises.find(e => e.id === exerciseId);
-    if (exercise) {
-      const set = exercise.sets.find(s => s.id === setId);
-      if (set) {
-        set.weight = weight;
+      const setIndex = exercise.sets.findIndex(s => s.id === updatedSet.id);
+      if (setIndex !== -1) {
+        exercise.sets[setIndex] = updatedSet;
         setCurrentWorkout(newWorkout);
       }
     }
@@ -103,11 +63,39 @@ export default function StartWorkoutScreen() {
   };
 
   const areAllSetsCompleted = (exercise: Exercise) => {
-    return exercise.sets.every(set => isSetCompleted(set.id));
+    return exercise.sets.every(set => set.isCompleted);
+  };
+
+  const areAllExercisesCompleted = () => {
+    return currentWorkout.exercises.every(exercise => areAllSetsCompleted(exercise));
   };
 
   const handleFinishWorkout = () => {
     const duration = Math.floor((Date.now() - startTime) / 1000);
+
+    if (!areAllExercisesCompleted()) {
+      Alert.alert(
+        'Treino Incompleto',
+        'Nem todos os exercícios foram marcados como concluídos. Deseja finalizar o treino mesmo assim?',
+        [
+          { text: "Cancelar", style: 'cancel' },
+          {
+            text: 'Finalizar Mesmo Assim',
+            onPress: async () => {
+              await storage.saveWorkoutToHistory(currentWorkout, new Date().toISOString(), duration);
+              await storage.updateWorkout(currentWorkout); // Atualiza o treino original
+              setIsWorkoutFinished(true);
+              router.replace({
+                pathname: '/WorkoutSummaryScreen',
+                params: { workoutName: currentWorkout.name, workoutDuration: duration },
+              });
+            },
+          },
+        ]
+      );
+      return;
+    }
+
     Alert.alert(
       'Finalizar Treino',
       'Deseja finalizar o treino?',
@@ -120,6 +108,7 @@ export default function StartWorkoutScreen() {
           text: 'Finalizar',
           onPress: async () => {
             await storage.saveWorkoutToHistory(currentWorkout, new Date().toISOString(), duration);
+            await storage.updateWorkout(currentWorkout); // Atualiza o treino original
             setIsWorkoutFinished(true);
             router.replace({
               pathname: '/WorkoutSummaryScreen',
@@ -152,33 +141,16 @@ export default function StartWorkoutScreen() {
             <View style={styles.exerciseHeader}>
               <Text style={styles.exerciseTitle}>{currentExercise.name}</Text>
             </View>
-            {currentExercise.imageUri && <Image source={{ uri: currentExercise.imageUri }} style={styles.exerciseImage} />}
+            {currentExercise.imageUri && <ExerciseImage imageUri={currentExercise.imageUri} imageStyle={styles.smallExerciseImage} />}
             <View style={styles.setsContainer}>
               {currentExercise.sets.map((set, setIndex) => (
-                <View key={set.id} style={styles.setRow}>
-                  <Text style={styles.setText}>Série {set.number}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={set.reps}
-                    onChangeText={(text) => handleRepChange(currentExercise.id, set.id, text)}
-                    keyboardType="numeric"
-                    editable={!isSetCompleted(set.id)}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    value={set.weight}
-                    onChangeText={(text) => handleWeightChange(currentExercise.id, set.id, text)}
-                    keyboardType="numeric"
-                    editable={!isSetCompleted(set.id)}
-                  />
-                  <Text style={styles.setText}>{set.weightUnit}</Text>
-                  <TouchableOpacity 
-                    style={[styles.checkButton, isSetCompleted(set.id) && styles.checkButtonCompleted]}
-                    onPress={() => handleToggleSet(set.id)}
-                  >
-                    <Text style={isSetCompleted(set.id) ? styles.checkTextCompleted : styles.checkText}>✓</Text>
-                  </TouchableOpacity>
-                </View>
+                <SetRow
+                  key={set.id}
+                  set={set}
+                  onUpdate={(updatedSet) => handleUpdateSet(currentExercise.id, updatedSet)}
+                  isEditable={true}
+                  showDelete={false} // Não permitir deletar sets durante o treino
+                />
               ))}
             </View>
           </View>
@@ -193,7 +165,10 @@ export default function StartWorkoutScreen() {
             <Text style={styles.navButtonText}>Anterior</Text>
           </TouchableOpacity>
           {currentExerciseIndex === currentWorkout.exercises.length - 1 ? (
-            <TouchableOpacity style={styles.finishButton} onPress={handleFinishWorkout}>
+            <TouchableOpacity 
+              style={[styles.finishButton, areAllExercisesCompleted() ? styles.finishButtonReady : styles.finishButtonDisabled]}
+              onPress={handleFinishWorkout}
+            >
               <Text style={styles.finishButtonText}>Finalizar Treino</Text>
             </TouchableOpacity>
           ) : (
@@ -265,6 +240,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 15,
     resizeMode: 'contain',
+  },
+  smallExerciseImage: {
+    height: 150, // Altura reduzida para a tela de execução do treino
+    marginBottom: 10,
   },
   exerciseTitle: {
     fontSize: 18,
@@ -344,5 +323,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  finishButtonReady: {
+    backgroundColor: '#34C759',
+  },
+  finishButtonDisabled: {
+    backgroundColor: '#ccc',
   },
 });

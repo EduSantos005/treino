@@ -296,7 +296,9 @@ export const storage = {
         w.id as workout_id,
         w.name as workout_name,
         w.date,
-        w.type,
+        w.category,
+        w.createdAt,
+        w.updatedAt,
         e.id as exercise_id,
         e.name as exercise_name,
         e.category as exercise_category,
@@ -323,10 +325,10 @@ export const storage = {
           id: row.workout_id.toString(),
           name: row.workout_name,
           date: row.date,
-          category: row.type,
+          category: row.category,
           exercises: [],
-          createdAt: '', // Placeholder, if not stored in DB
-          updatedAt: '', // Placeholder, if not stored in DB
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
         };
         workoutsMap.set(row.workout_id, workout);
       }
@@ -378,8 +380,8 @@ export const storage = {
     const workoutDbId = parseInt(workout.id, 10); // Converter para número
 
     await database.runAsync(
-      'UPDATE workouts SET name = ?, type = ?, date = ? WHERE id = ?',
-      [workout.name, workout.category, updatedAt, workoutDbId] // Usar workoutDbId
+      'UPDATE workouts SET name = ?, category = ?, updatedAt = ? WHERE id = ?',
+      [workout.name, workout.category, updatedAt, workoutDbId]
     );
 
     // Delete old sets and exercises for this workout

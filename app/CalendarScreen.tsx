@@ -153,7 +153,6 @@ export default function CalendarScreen() {
     );
 
     setModalVisible(false);
-    router.back();
   };
 
   const handleDeleteLog = async (logId: string) => {

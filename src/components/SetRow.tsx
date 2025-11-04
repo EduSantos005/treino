@@ -19,9 +19,10 @@ interface SetRowProps {
   repsRef?: (ref: TextInput) => void;
   weightRef?: (ref: TextInput) => void;
   onSubmitReps?: () => void;
+  isEditable?: boolean; // Nova prop para controlar a edição
 }
 
-export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, weightRef, onSubmitReps }: SetRowProps) {
+export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, weightRef, onSubmitReps, isEditable = true }: SetRowProps) {
   const [showUnitSelector, setShowUnitSelector] = useState(false);
 
   const handleComplete = () => {
@@ -62,7 +63,7 @@ export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, we
             returnKeyType="next"
             onSubmitEditing={onSubmitReps}
             blurOnSubmit={false}
-            editable={!set.isCompleted}
+            editable={isEditable && !set.isCompleted}
           />
         </View>
         <View style={styles.inputContainer}>
@@ -81,11 +82,11 @@ export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, we
               maxLength={5}
               placeholder="20"
               returnKeyType="done"
-              editable={!set.isCompleted}
+              editable={isEditable && !set.isCompleted}
             />
             <TouchableOpacity 
               style={styles.unitButton}
-              onPress={() => !set.isCompleted && setShowUnitSelector(true)}
+              onPress={() => isEditable && !set.isCompleted && setShowUnitSelector(true)}
             >
               <Text style={[styles.unitButtonText, set.isCompleted && styles.textCompleted]}>
                 {set.weightUnit.toUpperCase()}
@@ -103,15 +104,17 @@ export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, we
             />
           </View>
         </View>
-        <TouchableOpacity
-          style={[
-            styles.completeButton,
-            set.isCompleted && styles.completedButton
-          ]}
-          onPress={handleComplete}
-        >
-          <Text style={styles.completeButtonText}>✓</Text>
-        </TouchableOpacity>
+        {isEditable && (
+          <TouchableOpacity
+            style={[
+              styles.completeButton,
+              set.isCompleted && styles.completedButton
+            ]}
+            onPress={handleComplete}
+          >
+            <Text style={styles.completeButtonText}>✓</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -149,8 +152,9 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   setRow: {
-    marginVertical: 8,
-    padding: 12,
+    marginVertical: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: '#f8f8f8',
     borderRadius: 8,
     borderWidth: 1,
@@ -174,20 +178,20 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flex: 1,
-    marginHorizontal: 4,
+    marginHorizontal: 2,
   },
   label: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 6,
-    padding: 10,
+    padding: 8,
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
   },
   inputCompleted: {

@@ -1,20 +1,12 @@
-import * as ImagePicker from 'expo-image-picker';
-import React from 'react';
-import {
-    Alert,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View, StyleProp, ImageStyle } from 'react-native';
 
 interface ExerciseImageProps {
   imageUri?: string;
   onImageSelected?: (uri: string) => void;
+  imageStyle?: StyleProp<ImageStyle>;
 }
 
-export function ExerciseImage({ imageUri, onImageSelected }: ExerciseImageProps) {
+export function ExerciseImage({ imageUri, onImageSelected, imageStyle }: ExerciseImageProps) {
   // Se a imagem é do StrengthLevel, não permite edição
   const isDefaultImage = imageUri?.startsWith('https://static.strengthlevel.com');
   
@@ -108,9 +100,9 @@ export function ExerciseImage({ imageUri, onImageSelected }: ExerciseImageProps)
       disabled={isDefaultImage || !onImageSelected}
     >
       {imageUri ? (
-        <Image source={{ uri: imageUri }} style={styles.image} />
+        <Image source={{ uri: imageUri }} style={[styles.image, imageStyle]} />
       ) : onImageSelected ? (
-        <View style={styles.placeholder}>
+        <View style={[styles.placeholder, imageStyle]}>
           <Text style={styles.placeholderText}>Adicionar Foto</Text>
         </View>
       ) : null}

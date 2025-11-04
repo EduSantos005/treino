@@ -5,6 +5,13 @@ let db: SQLite.SQLiteDatabase | null = null;
 export const initDB = async (): Promise<SQLite.SQLiteDatabase> => {
   db = await SQLite.openDatabaseAsync('app.db');
 
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, date TEXT, category TEXT, createdAt TEXT, updatedAt TEXT);
+    CREATE TABLE IF NOT EXISTS exercises (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, category TEXT, image_uri TEXT);
+    CREATE TABLE IF NOT EXISTS sets (id INTEGER PRIMARY KEY AUTOINCREMENT, workout_id INTEGER, exercise_id INTEGER, reps INTEGER, weight REAL, weight_unit TEXT, FOREIGN KEY(workout_id) REFERENCES workouts(id), FOREIGN KEY(exercise_id) REFERENCES exercises(id));
+    CREATE TABLE IF NOT EXISTS workout_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, workout_id INTEGER, completed_at TEXT, workout_details TEXT, duration INTEGER);
+  `);
+
   // Migration: Add duration column to workout_logs if it doesn't exist
   const columns = await db.getAllAsync<any>('PRAGMA table_info(workout_logs);');
   const hasDurationColumn = columns.some(column => column.name === 'duration');
@@ -42,13 +49,6 @@ export const initDB = async (): Promise<SQLite.SQLiteDatabase> => {
     // For a real app, this needs careful consideration.
     console.warn("Old 'type' column found in 'workouts' table. Consider a proper migration strategy.");
   }
-
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS workouts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, date TEXT, category TEXT, createdAt TEXT, updatedAt TEXT);
-    CREATE TABLE IF NOT EXISTS exercises (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, category TEXT, image_uri TEXT);
-    CREATE TABLE IF NOT EXISTS sets (id INTEGER PRIMARY KEY AUTOINCREMENT, workout_id INTEGER, exercise_id INTEGER, reps INTEGER, weight REAL, weight_unit TEXT, FOREIGN KEY(workout_id) REFERENCES workouts(id), FOREIGN KEY(exercise_id) REFERENCES exercises(id));
-    CREATE TABLE IF NOT EXISTS workout_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, workout_id INTEGER, completed_at TEXT, workout_details TEXT, duration INTEGER);
-  `);
   return db;
 };
 

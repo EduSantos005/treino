@@ -44,7 +44,7 @@ export const exerciseCatalog: CatalogExercise[] = [
   },
   {
     id: 'voador-maquina',
-    name: 'Voador (Pec Deck)',
+    name: 'Voador Peitoral',
     description: 'Exercício de isolamento para o peitoral.',
     muscleGroups: ['chest'],
     imageUri: 'https://static.strengthlevel.com/images/exercises/machine-chest-fly/machine-chest-fly-800.avif',
@@ -104,7 +104,7 @@ export const exerciseCatalog: CatalogExercise[] = [
   },
   {
     id: 'triceps-frances-halter',
-    name: 'Tríceps Francês com Halter',
+    name: 'Tríceps Francês',
     description: 'Trabalha a cabeça longa do tríceps.',
     muscleGroups: ['triceps'],
     imageUri: 'https://static.strengthlevel.com/images/illustrations/lying-tricep-extension-1000x1000.jpg',
@@ -298,6 +298,21 @@ export const exerciseCatalog: CatalogExercise[] = [
       'Mantenha os pés na largura dos ombros e o peito para cima.',
       'Agache como se fosse sentar em uma cadeira, mantendo a coluna reta.',
       'Desça até que as coxas fiquem paralelas ao chão e depois suba.'
+    ]
+  },
+  {
+    id: 'stiff',
+    name: 'Stiff',
+    description: 'Exercício que enfatiza o movimento de dobradiça do quadril com mínima flexão do joelho, focando nos isquiotibiais, glúteos e lombar.',
+    muscleGroups: ['legs', 'back'],
+    imageUri: 'https://static.strengthlevel.com/images/exercises/stiff-leg-deadlift/stiff-leg-deadlift-800.avif',
+    defaultSets: 3,
+    defaultReps: 10,
+    instructions: [
+      'Posição inicial: Fique em pé com os pés na largura dos ombros, barra sobre o meio dos pés. Mantenha uma leve flexão nos joelhos.',
+      'Pegada na barra: Incline-se para frente a partir dos quadris, mantendo as costas retas. Segure a barra com uma pegada na largura dos ombros.',
+      'Levantamento: Inspire, contraia o core e levante a barra estendendo os quadris e joelhos. Mantenha a barra próxima ao corpo e as costas retas.',
+      'Descida: Inverta o movimento, empurrando os quadris para trás e inclinando-se para frente. Mantenha as pernas quase retas e as costas retas. Desça a barra de forma controlada.'
     ]
   }
 ];

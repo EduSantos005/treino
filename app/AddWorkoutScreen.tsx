@@ -22,16 +22,6 @@ import { storage, Workout } from '../src/services/storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 // Adicionado para forçar re-bundle
 
-// Define the Exercise and Set types based on the database schema.
-type Set = { number: number; reps: number; weight: number; weightUnit?: string };
-type Exercise = {
-  id: number; // ID do banco de dados
-  name: string;
-  sets: Set[];
-  imageUri?: string;
-  notes?: string;
-};
-
 export default function AddWorkoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -76,9 +66,9 @@ export default function AddWorkoutScreen() {
 
   const handleConfirmSelection = (selectedExercises: CatalogExercise[]) => {
     const newExercises: Exercise[] = selectedExercises.map((ex) => ({
-      id: Date.now() + Math.random(), // Unique ID for new exercise
+      id: (Date.now() + Math.random()).toString(), // Unique ID for new exercise
       name: ex.name,
-      sets: [{ number: 1, reps: 10, weight: 0, weightUnit: 'kg' }],
+      sets: [{ id: Date.now() + Math.random(), number: 1, reps: '10', weight: '0', weightUnit: 'kg', isCompleted: false }],
       imageUri: ex.imageUri,
       notes: '',
     }));
@@ -243,12 +233,13 @@ export default function AddWorkoutScreen() {
                         }
                       }}
                       showDelete={exercise.sets.length > 1}
+                      isEditable={false}
                     />
                   ))}
                   <TouchableOpacity
                     style={styles.addSetButton}
                     onPress={() => {
-                      const newSet: Set = { number: exercise.sets.length + 1, reps: 10, weight: 10, weightUnit: 'kg' };
+                      const newSet: Set = { id: Date.now() + Math.random(), number: exercise.sets.length + 1, reps: '10', weight: '10', weightUnit: 'kg', isCompleted: false };
                       updateExercise(exercise.id, 'sets', [...exercise.sets, newSet]);
                     }}
                   >
