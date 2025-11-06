@@ -15,6 +15,7 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 ### Gestão de Exercícios
 - ✅ Adicionar múltiplos exercícios a um treino de uma só vez
 - ✅ Selecionar exercícios de um catálogo com busca por nome e filtro por grupo muscular
+- ✅ Catálogo expandido com mais exercícios comuns de academia.
 - ✅ Preenchimento automático de nome, imagem e séries ao selecionar do catálogo
 
 ### Execução de Treino
@@ -140,7 +141,7 @@ npx expo start
   - [ ] Histórico de peso/repetições
   - [ ] Gráficos de evolução
   - [ ] Recordes pessoais
-- [ ] Adicionar mais exercícios ao catálogo
+- [x] Adicionar mais exercícios ao catálogo
 - [ ] Melhorias nas anotações:
   - [ ] Links para vídeos
 - [ ] Backup e sincronização:

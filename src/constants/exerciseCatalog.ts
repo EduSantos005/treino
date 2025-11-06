@@ -312,7 +312,173 @@ export const exerciseCatalog: CatalogExercise[] = [
       'Posição inicial: Fique em pé com os pés na largura dos ombros, barra sobre o meio dos pés. Mantenha uma leve flexão nos joelhos.',
       'Pegada na barra: Incline-se para frente a partir dos quadris, mantendo as costas retas. Segure a barra com uma pegada na largura dos ombros.',
       'Levantamento: Inspire, contraia o core e levante a barra estendendo os quadris e joelhos. Mantenha a barra próxima ao corpo e as costas retas.',
-      'Descida: Inverta o movimento, empurrando os quadris para trás e inclinando-se para frente. Mantenha as pernas quase retas e as costas retas. Desça a barra de forma controlada.'
-    ]
-  }
-];
+            'Descida: Inverta o movimento, empurrando os quadris para trás e inclinando-se para frente. Mantenha as pernas quase retas e as costas retas. Desça a barra de forma controlada.'
+          ]
+        },
+        {
+          id: 'desenvolvimento-halteres',
+          name: 'Desenvolvimento com Halteres',
+          description: 'Exercício fundamental para o desenvolvimento dos ombros (deltoides).',
+          muscleGroups: ['shoulders', 'triceps'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/seated-dumbbell-shoulder-press/seated-dumbbell-shoulder-press-800.avif',
+          defaultSets: 3,
+          defaultReps: 10,
+          instructions: [
+            'Sente-se em um banco com as costas retas, segurando um halter em cada mão na altura dos ombros.',
+            'Empurre os halteres para cima até que os braços estejam quase totalmente estendidos.',
+            'Desça os halteres de forma controlada até a posição inicial.',
+            'Mantenha o core contraído durante todo o movimento.'
+          ]
+        },
+        {
+          id: 'remada-curvada-barra',
+          name: 'Remada Curvada com Barra',
+          description: 'Exercício composto para as costas, focando em espessura e força.',
+          muscleGroups: ['back', 'biceps'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/bent-over-row/bent-over-row-800.avif',
+          defaultSets: 3,
+          defaultReps: 10,
+          instructions: [
+            'Fique em pé com os pés na largura dos ombros e segure a barra com uma pegada pronada.',
+            'Incline o tronco para frente, mantendo as costas retas, até ficar quase paralelo ao chão.',
+            'Puxe a barra em direção à parte inferior do peito, contraindo as escápulas.',
+            'Desça a barra de forma controlada até a posição inicial.'
+          ]
+        },
+        {
+          id: 'rosca-martelo',
+          name: 'Rosca Martelo',
+          description: 'Trabalha o bíceps e o músculo braquial, ajudando na largura do braço.',
+          muscleGroups: ['biceps'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/hammer-curl/hammer-curl-800.avif',
+          defaultSets: 3,
+          defaultReps: 12,
+          instructions: [
+            'Fique em pé, segurando um halter em cada mão com as palmas voltadas uma para a outra (pegada neutra).',
+            'Mantenha os cotovelos parados e próximos ao corpo.',
+            'Flexione um cotovelo de cada vez, levantando o halter em direção ao ombro.',
+            'Desça o halter de forma controlada e repita com o outro braço.'
+          ]
+        },
+        {
+          id: 'elevacao-panturrilha-pe',
+          name: 'Elevação de Panturrilha em Pé',
+          description: 'Exercício de isolamento para fortalecer os músculos da panturrilha (gastrocnêmio e sóleo).',
+          muscleGroups: ['legs'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/seated-calf-raise/seated-calf-raise-800.avif',
+          defaultSets: 4,
+          defaultReps: 15,
+          instructions: [
+            'Fique em pé, com os pés apoiados em um degrau ou na máquina específica.',
+            'Eleve os calcanhares o máximo possível, contraindo as panturrilhas.',
+            'Segure a contração por um momento no topo.',
+            'Desça os calcanhares de forma controlada, alongando os músculos.'
+          ]
+        },
+        {
+          id: 'abdominal-maquina',
+          name: 'Abdominal na Máquina',
+          description: 'Exercício de isolamento para o reto abdominal com resistência ajustável.',
+          muscleGroups: ['abs'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/decline-sit-up/decline-sit-up-800.avif',
+          defaultSets: 3,
+          defaultReps: 15,
+          instructions: [
+            'Sente-se na máquina e ajuste o assento e os pegadores conforme sua altura.',
+            'Segure os pegadores ou apoie os braços nas almofadas.',
+            'Flexione o tronco para frente, contraindo o abdômen para puxar o peso.',
+            'Retorne à posição inicial de forma controlada, sem deixar o peso bater.'
+          ]
+        },
+        {
+          id: 'levantamento-terra',
+          name: 'Levantamento Terra',
+          description: 'Exercício composto que trabalha costas, pernas e glúteos. Considerado um dos três levantamentos básicos.',
+          muscleGroups: ['back', 'legs'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/sumo-deadlift/sumo-deadlift-800.avif',
+          defaultSets: 3,
+          defaultReps: 8,
+          instructions: [
+            'Posicione a barra no chão, próxima às suas canelas.',
+            'Agache com a coluna reta, quadris para trás, e segure a barra com uma pegada mista ou pronada.',
+            'Levante a barra mantendo-a próxima ao corpo, estendendo os quadris e joelhos simultaneamente.',
+            'Desça a barra de forma controlada, invertendo o movimento.'
+          ]
+        },
+        {
+          id: 'elevacao-pelvica',
+          name: 'Elevação Pélvica',
+          description: 'Excelente exercício para ativação e fortalecimento dos glúteos e isquiotibiais.',
+          muscleGroups: ['legs'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/hip-thrust/hip-thrust-800.avif',
+          defaultSets: 3,
+          defaultReps: 12,
+          instructions: [
+            'Sente-se no chão com as costas apoiadas em um banco e uma barra sobre o quadril.',
+            'Flexione os joelhos e mantenha os pés firmes no chão.',
+            'Eleve o quadril até que o corpo forme uma linha reta dos ombros aos joelhos.',
+            'Desça o quadril de forma controlada.'
+          ]
+        },
+        {
+          id: 'levantamento-terra-sumo',
+          name: 'Levantamento Terra Sumô',
+          description: 'Variação do levantamento terra com uma postura mais aberta, focando mais nos glúteos e parte interna das coxas.',
+          muscleGroups: ['legs', 'back'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/sumo-deadlift/sumo-deadlift-800.avif',
+          defaultSets: 3,
+          defaultReps: 8,
+          instructions: [
+            'Posicione-se com os pés bem afastados e as pontas dos pés apontando para fora.',
+            'Agache com a coluna reta e segure a barra com uma pegada interna aos joelhos.',
+            'Levante a barra estendendo os quadris e joelhos, mantendo o peito erguido.',
+            'Desça a barra de forma controlada até o chão.'
+          ]
+        },
+        {
+          id: 'agachamento-bulgaro-halteres',
+          name: 'Agachamento Búlgaro com Halteres',
+          description: 'Exercício unilateral que desafia o equilíbrio e fortalece quadríceps e glúteos.',
+          muscleGroups: ['legs'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/dumbbell-bulgarian-split-squat/dumbbell-bulgarian-split-squat-800.avif',
+          defaultSets: 3,
+          defaultReps: 12,
+          instructions: [
+            'Segure um halter em cada mão e posicione o peito de um pé em um banco atrás de você.',
+            'Agache com a perna da frente até que a coxa fique paralela ao chão.',
+            'Mantenha o tronco ereto e o joelho da frente alinhado com o pé.',
+            'Suba à posição inicial e repita. Troque de perna após a série.'
+          ]
+        },
+        {
+          id: 'elevacao-lateral-halteres',
+          name: 'Elevação Lateral com Halteres',
+          description: 'Exercício clássico para a porção medial dos ombros, contribuindo para a largura.',
+          muscleGroups: ['shoulders'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/dumbbell-lateral-raise/dumbbell-lateral-raise-800.avif',
+          defaultSets: 3,
+          defaultReps: 12,
+          instructions: [
+            'Fique em pé, segurando um halter em cada mão ao lado do corpo.',
+            'Com os cotovelos levemente flexionados, eleve os braços lateralmente até a altura dos ombros.',
+            'Faça uma pequena pausa no topo do movimento.',
+            'Desça os halteres de forma controlada.'
+          ]
+        },
+        {
+          id: 'abdominal-supra',
+          name: 'Abdominal Supra',
+          description: 'Exercício básico para a parte superior do reto abdominal.',
+          muscleGroups: ['abs'],
+          imageUri: 'https://static.strengthlevel.com/images/exercises/crunches/crunches-800.avif',
+          defaultSets: 3,
+          defaultReps: 20,
+          instructions: [
+            'Deite-se de costas com os joelhos flexionados e os pés no chão.',
+            'Coloque as mãos atrás da cabeça ou cruzadas sobre o peito.',
+            'Eleve o tronco em direção aos joelhos, contraindo o abdômen.',
+            'Desça de forma controlada sem relaxar completamente antes da próxima repetição.'
+          ]
+        }
+      ];
+      
