@@ -64,7 +64,7 @@ export default function CalendarScreen() {
           w.id as workout_id,
           w.name as workout_name,
           w.date,
-          w.type,
+          w.category as workout_category, -- Corrigido de w.type
           e.id as exercise_id,
           e.name as exercise_name,
           e.category as exercise_category,
@@ -86,11 +86,10 @@ export default function CalendarScreen() {
           workout = {
             id: row.workout_id.toString(),
             date: row.date,
-            type: row.type,
+            type: row.workout_category, // Corrigido de row.type
             name: row.workout_name,
             exercises: [],
-            // Esses campos são do storage, podem não estar no DB da mesma forma
-            category: row.type,
+            category: row.workout_category, // Corrigido de row.type
             createdAt: row.date,
             updatedAt: row.date,
           };
@@ -264,7 +263,7 @@ export default function CalendarScreen() {
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.workoutOption} onPress={() => handleLogWorkout(item)}>
                   <Text style={styles.workoutOptionText}>
-                    {item.name} ({getCategoryLabel(item.type)})
+                    {item.name} ({getCategoryLabel(item.category)})
                   </Text>
                 </TouchableOpacity>
               )}
