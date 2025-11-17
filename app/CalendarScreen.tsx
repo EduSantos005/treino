@@ -86,10 +86,9 @@ export default function CalendarScreen() {
           workout = {
             id: row.workout_id.toString(),
             date: row.date,
-            type: row.workout_category, // Corrigido de row.type
             name: row.workout_name,
             exercises: [],
-            category: row.workout_category, // Corrigido de row.type
+            category: row.workout_category,
             createdAt: row.date,
             updatedAt: row.date,
           };

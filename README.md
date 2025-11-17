@@ -10,6 +10,7 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - ✅ Editar treinos existentes
 - ✅ Excluir treinos
 - ✅ Armazenamento local persistente
+- ✅ **Validação de Dados:** Impede criação de treinos com nome vazio ou valores inválidos
 - ✅ **Imagens de Exercícios:** As imagens dos exercícios são salvas e exibidas corretamente nas telas de treino e execução.
 
 ### Gestão de Exercícios
@@ -38,7 +39,9 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - ✅ Design moderno e intuitivo
 - ✅ Navegação fluida entre campos com o teclado (botão "Next")
 - ✅ Ajuste automático da tela para o teclado não cobrir os campos
-- ✅ Validação de dados e mensagens de feedback claras
+- ✅ **Validação em Tempo Real:** Inputs bloqueiam valores negativos e caracteres inválidos durante a digitação
+- ✅ **Validação Pré-salvamento:** Verifica integridade de dados antes de salvar treinos
+- ✅ Mensagens de feedback claras e específicas para cada tipo de erro
 - ✅ Suporte a gestos no carrossel de exercícios
 - ✅ **Posicionamento de Títulos:** Ajuste fino no posicionamento dos títulos das telas para uma melhor estética e consistência.
 - ✅ **Navegação Aprimorada:** Texto do atalho 'Biblioteca' alterado para 'Exercícios' para maior clareza.
@@ -90,7 +93,7 @@ A estrutura do banco de dados é a seguinte:
 | id     | INTEGER | Chave primária, auto-incremento                 |
 | name   | TEXT    | Nome do treino                                  |
 | date   | TEXT    | Data de criação/última atualização do treino (ISO 8601) |
-| type   | TEXT    | Categoria do treino (ex: 'chest-triceps')       |
+| category | TEXT  | Categoria do treino (ex: 'chest-triceps')       |
 
 **Tabela `exercises`**
 | Coluna    | Tipo    | Descrição                                     |
@@ -137,11 +140,15 @@ npx expo start
 
 ## 📝 Próximos Passos
 
+- [ ] UX e Performance:
+  - [ ] Substituir Alerts por toast notifications
+  - [ ] Adicionar memoização em componentes pesados (cronômetro)
+  - [ ] Centralizar tipos duplicados em /src/types/models.ts
 - [ ] Tracking de progresso:
   - [ ] Histórico de peso/repetições
   - [ ] Gráficos de evolução
   - [ ] Recordes pessoais
-- [x] Adicionar mais exercícios ao catálogo
+- [ ] Adicionar mais exercícios ao catálogo
 - [ ] Melhorias nas anotações:
   - [ ] Links para vídeos
 - [ ] Backup e sincronização:
@@ -153,12 +160,26 @@ npx expo start
 
 Este projeto foi desenvolvido usando boas práticas de programação:
 
-- Código tipado com TypeScript
-- Componentização
+- Código tipado com TypeScript (strict mode)
+- Componentização e componentes reutilizáveis
 - Hooks personalizados
 - Gerenciamento de estado
-- Tratamento de erros
-- Feedback ao usuário
-- Componentes reutilizáveis
-- Persistência de dados
+- Tratamento de erros e validação de dados
+- Feedback ao usuário claro e específico
+- Persistência de dados offline-first
 - Tratamento de permissões (câmera/galeria)
+
+## 🔄 Changelog Recente
+
+### 17/11/2024 - Correções e Validações
+- ✅ **Corrigido:** Inconsistência entre propriedade 'type' e 'category' nos treinos
+  - Padronizado uso de 'category' em toda a aplicação
+  - Removidos tipos locais duplicados em favor de tipos canônicos
+- ✅ **Adicionado:** Validação robusta de inputs
+  - Bloqueio de valores negativos em repetições e peso (tempo real)
+  - Validação pré-salvamento de integridade de dados
+  - Suporte a valores decimais em peso (ex: 22.5 kg)
+  - Mensagens de erro específicas por tipo de validação
+- ✅ **Melhorado:** Consistência de tipos TypeScript
+  - Importação de tipos canônicos de `storage.ts`
+  - Melhor inferência de tipos em componentes

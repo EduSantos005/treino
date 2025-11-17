@@ -33,6 +33,29 @@ export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, we
     onUpdate({ ...set, isCompleted: isCompleting });
   };
 
+  const handleRepsChange = (value: string) => {
+    // Remove caracteres não numéricos
+    const numericValue = value.replace(/[^0-9]/g, '');
+    // Converte para número e verifica se é positivo
+    const numValue = parseInt(numericValue, 10);
+    if (numericValue === '' || (!isNaN(numValue) && numValue >= 0)) {
+      onUpdate({ ...set, reps: numericValue });
+    }
+  };
+
+  const handleWeightChange = (value: string) => {
+    // Permite números e ponto decimal
+    const numericValue = value.replace(/[^0-9.]/g, '');
+    // Garante apenas um ponto decimal
+    const parts = numericValue.split('.');
+    const cleanValue = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : numericValue;
+    // Converte para número e verifica se é positivo
+    const numValue = parseFloat(cleanValue);
+    if (cleanValue === '' || cleanValue === '.' || (!isNaN(numValue) && numValue >= 0)) {
+      onUpdate({ ...set, weight: cleanValue });
+    }
+  };
+
   return (
     <View style={[styles.setRow, set.isCompleted && styles.setRowCompleted]}>
       <View style={styles.setHeader}>
@@ -56,7 +79,7 @@ export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, we
               set.isCompleted && styles.inputCompleted
             ]}
             value={set.reps}
-            onChangeText={(value) => onUpdate({ ...set, reps: value })}
+            onChangeText={handleRepsChange}
             keyboardType="numeric"
             maxLength={3}
             placeholder="12"
@@ -72,14 +95,14 @@ export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, we
             <TextInput
               ref={weightRef}
               style={[
-                styles.input, 
-                styles.weightInput, 
+                styles.input,
+                styles.weightInput,
                 set.isCompleted && styles.inputCompleted
               ]}
               value={set.weight}
-              onChangeText={(value) => onUpdate({ ...set, weight: value })}
-              keyboardType="numeric"
-              maxLength={5}
+              onChangeText={handleWeightChange}
+              keyboardType="decimal-pad"
+              maxLength={6}
               placeholder="20"
               returnKeyType="done"
               editable={isEditable && !set.isCompleted}

@@ -98,8 +98,31 @@ export default function AddWorkoutScreen() {
       return;
     }
 
+    // Validar que todos os exercícios têm valores válidos
+    for (const exercise of exercises) {
+      if (!exercise.sets || exercise.sets.length === 0) {
+        showAlert('Atenção', `O exercício "${exercise.name}" precisa ter pelo menos uma série`);
+        return;
+      }
+
+      for (const set of exercise.sets) {
+        const reps = parseInt(set.reps, 10);
+        const weight = parseFloat(set.weight);
+
+        if (isNaN(reps) || reps <= 0) {
+          showAlert('Atenção', `O exercício "${exercise.name}" tem séries com repetições inválidas. Use valores maiores que zero.`);
+          return;
+        }
+
+        if (isNaN(weight) || weight < 0) {
+          showAlert('Atenção', `O exercício "${exercise.name}" tem séries com peso inválido. Use valores positivos ou zero.`);
+          return;
+        }
+      }
+    }
+
     const workoutData = {
-      name: workoutName,
+      name: workoutName.trim(),
       category,
       exercises,
     };

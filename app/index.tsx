@@ -12,18 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getCategoryLabel } from '../src/constants/workoutTypes';
 import { getDb } from '../src/services/database';
-import { storage } from '../src/services/storage';
+import { storage, Workout } from '../src/services/storage';
 import { useRouter } from 'expo-router';
-
-type Set = { id: number; reps: number; weight: number };
-type Exercise = { id: number; name: string; category: string; sets: Set[] };
-type Workout = {
-  id: number;
-  date: string;
-  type: string;
-  name: string;
-  exercises: Exercise[];
-};
 
 const getDaysAgo = (dateString: string) => {
   const today = new Date();
@@ -107,7 +97,7 @@ export default function HomeScreen() {
       <View style={styles.workoutInfo}>
         <Text style={styles.workoutName}>{item.name}</Text>
         <Text style={styles.workoutDetails}>
-          {getCategoryLabel(item.type)} • {item.exercises.length} exercício(s)
+          {getCategoryLabel(item.category)} • {item.exercises.length} exercício(s)
         </Text>
         <Text style={styles.lastTrainedText}>Último treino: {item.lastTrained ? getDaysAgo(item.lastTrained) : 'Nunca treinado'}</Text>
       </View>
