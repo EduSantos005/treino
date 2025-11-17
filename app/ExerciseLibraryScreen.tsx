@@ -6,9 +6,11 @@ import { CatalogExercise, exerciseCatalog } from '../src/constants/exerciseCatal
 import { MuscleGroup, muscleGroupLabels } from '../src/constants/exerciseCategories';
 import { storage } from '../src/services/storage';
 import { useRouter } from 'expo-router';
+import { useTheme } from '../src/contexts/ThemeContext';
 
 export default function ExerciseLibraryScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [allExercises, setAllExercises] = useState<CatalogExercise[]>([]);
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<MuscleGroup | null>(null);
 
@@ -49,25 +51,25 @@ export default function ExerciseLibraryScreen() {
   const renderItem = ({ item }: { item: CatalogExercise }) => {
     const isCustom = item.id.startsWith('custom_');
     return (
-      <View style={styles.exerciseCard}>
+      <View style={[styles.exerciseCard, { backgroundColor: colors.surface }]}>
         <Image source={{ uri: item.imageUri }} style={styles.exerciseImage} />
         <View style={styles.exerciseInfo}>
-          <Text style={styles.exerciseName}>{item.name}</Text>
-          <Text style={styles.exerciseMuscles}>{item.muscleGroups.map(g => muscleGroupLabels[g]).join(', ')}</Text>
-          <Text style={styles.exerciseDescription} numberOfLines={2}>{item.description}</Text>
+          <Text style={[styles.exerciseName, { color: colors.text }]}>{item.name}</Text>
+          <Text style={[styles.exerciseMuscles, { color: colors.primary }]}>{item.muscleGroups.map(g => muscleGroupLabels[g]).join(', ')}</Text>
+          <Text style={[styles.exerciseDescription, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
           {isCustom && (
             <View style={styles.actionsContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => router.push({ pathname: "/EditExerciseScreen", params: { exerciseId: item.id } })}
               >
-                <Text style={styles.editButtonText}>Editar</Text>
+                <Text style={[styles.editButtonText, { color: colors.primary }]}>Editar</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleDelete(item)}
               >
-                <Text style={styles.deleteButtonText}>Excluir</Text>
+                <Text style={[styles.deleteButtonText, { color: colors.error }]}>Excluir</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -77,32 +79,32 @@ export default function ExerciseLibraryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.borderLight }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backButton}>Voltar</Text>
+          <Text style={[styles.backButton, { color: colors.primary }]}>Voltar</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Exercícios</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Exercícios</Text>
         <View style={{ width: 50 }} />
       </View>
 
-      <View style={styles.filterWrapper}>
+      <View style={[styles.filterWrapper, { borderBottomColor: colors.borderLight }]}>
         <View style={styles.filterContainer}>
           <TouchableOpacity
-            style={[styles.filterButton, !selectedMuscleGroup && styles.filterButtonSelected]}
+            style={[styles.filterButton, { backgroundColor: colors.surfaceVariant }, !selectedMuscleGroup && { backgroundColor: colors.primary }]}
             onPress={() => setSelectedMuscleGroup(null)}
           >
-            <Text style={[styles.filterButtonText, !selectedMuscleGroup && styles.filterButtonTextSelected]}>
+            <Text style={[styles.filterButtonText, { color: colors.textSecondary }, !selectedMuscleGroup && styles.filterButtonTextSelected]}>
               Todos
             </Text>
           </TouchableOpacity>
           {Object.entries(muscleGroupLabels).map(([key, label]) => (
             <TouchableOpacity
               key={key}
-              style={[styles.filterButton, selectedMuscleGroup === key && styles.filterButtonSelected]}
+              style={[styles.filterButton, { backgroundColor: colors.surfaceVariant }, selectedMuscleGroup === key && { backgroundColor: colors.primary }]}
               onPress={() => setSelectedMuscleGroup(key as MuscleGroup)}
             >
-              <Text style={[styles.filterButtonText, selectedMuscleGroup === key && styles.filterButtonTextSelected]}>
+              <Text style={[styles.filterButtonText, { color: colors.textSecondary }, selectedMuscleGroup === key && styles.filterButtonTextSelected]}>
                 {label}
               </Text>
             </TouchableOpacity>
@@ -117,8 +119,8 @@ export default function ExerciseLibraryScreen() {
         contentContainerStyle={styles.list}
       />
       <View style={styles.bottomContainer}>
-        <TouchableOpacity 
-          style={styles.addButton}
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: colors.primary }]}
           onPress={() => router.push('/CreateExerciseScreen')}
         >
           <Text style={styles.addButtonText}>+ Criar Novo</Text>
@@ -129,44 +131,32 @@ export default function ExerciseLibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    paddingHorizontal: 20, 
-    paddingBottom: 10, 
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 10,
     paddingTop: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
+  backButton: { fontSize: 16 },
   title: { fontSize: 20, fontWeight: 'bold' },
   bottomContainer: {
     position: 'absolute',
     bottom: 20,
     right: 20,
   },
-  addButton: { 
-    backgroundColor: '#007AFF', 
-    padding: 15, 
-    borderRadius: 50, 
-    width: 60,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+  addButton: {
+    padding: 10,
+    borderRadius: 8,
   },
-  addButton: { backgroundColor: '#007AFF', padding: 10, borderRadius: 8 },
   addButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
   filterWrapper: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   filterContainer: {
     flexDirection: 'row',
@@ -176,23 +166,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
     margin: 4,
   },
-  filterButtonSelected: {
-    backgroundColor: '#007AFF',
-  },
-  filterButtonText: { color: '#666' },
+  filterButtonText: {},
   filterButtonTextSelected: { color: '#fff' },
   list: { padding: 20 },
-  exerciseCard: { flexDirection: 'row', backgroundColor: '#f8f8f8', borderRadius: 8, padding: 15, marginBottom: 15, alignItems: 'flex-start' },
+  exerciseCard: { flexDirection: 'row', borderRadius: 8, padding: 15, marginBottom: 15, alignItems: 'flex-start' },
   exerciseImage: { width: 60, height: 60, borderRadius: 8, marginRight: 15 },
   exerciseInfo: { flex: 1 },
   exerciseName: { fontSize: 18, fontWeight: '600', marginBottom: 5 },
-  exerciseMuscles: { color: '#007AFF', marginBottom: 8, fontStyle: 'italic' },
-  exerciseDescription: { color: '#666', marginBottom: 10 },
+  exerciseMuscles: { marginBottom: 8, fontStyle: 'italic' },
+  exerciseDescription: { marginBottom: 10 },
   actionsContainer: { flexDirection: 'row', marginTop: 5 },
   actionButton: { marginRight: 15 },
-  editButtonText: { color: '#007AFF', fontWeight: 'bold' },
-  deleteButtonText: { color: '#FF3B30', fontWeight: 'bold' },
+  editButtonText: { fontWeight: 'bold' },
+  deleteButtonText: { fontWeight: 'bold' },
 });

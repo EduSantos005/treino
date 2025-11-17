@@ -1,16 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Image, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Image, TextInput, BackHandler, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Exercise, Set, Workout, storage } from '../src/services/storage';
 import { SetRow } from '../src/components/SetRow';
 import { ExerciseImage } from '../src/components/ExerciseImage';
+import { Timer } from '../src/components/Timer';
+import { useTheme } from '../src/contexts/ThemeContext';
+import * as Haptics from 'expo-haptics';
+import { Audio } from 'expo-av';
 
 import { useNavigation } from 'expo-router';
 
 export default function StartWorkoutScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const { restTime: configuredRestTime, colors } = useTheme();
   const params = useLocalSearchParams();
   const initialWorkout: Workout = JSON.parse(params.workout as string);
 
@@ -19,6 +24,9 @@ export default function StartWorkoutScreen() {
   const [startTime] = useState(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isWorkoutFinished, setIsWorkoutFinished] = useState(false);
+  const [restTimeRemaining, setRestTimeRemaining] = useState<number | null>(null);
+  const [isResting, setIsResting] = useState(false);
+  const restTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -30,45 +38,174 @@ export default function StartWorkoutScreen() {
     };
   }, [navigation, isWorkoutFinished]);
 
-  const formatTime = (seconds: number) => {
-    const getSeconds = `0${seconds % 60}`.slice(-2);
-    const minutes = Math.floor(seconds / 60);
-    const getMinutes = `0${minutes % 60}`.slice(-2);
-    const getHours = `0${Math.floor(seconds / 3600)}`.slice(-2);
-    return `${getHours}:${getMinutes}:${getSeconds}`;
+  const handleBackPress = useCallback(() => {
+    Alert.alert(
+      'Sair do Treino',
+      'Se você voltar agora, o progresso do treino atual será perdido. Deseja realmente sair?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: () => {
+            setIsWorkoutFinished(true);
+            router.back();
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  }, [router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!isWorkoutFinished) {
+        handleBackPress();
+        return true; // Previne o comportamento padrão
+      }
+      return false; // Permite voltar se o treino já foi finalizado
+    });
+
+    return () => backHandler.remove();
+  }, [isWorkoutFinished, handleBackPress]);
+
+  const playRestCompleteNotification = async () => {
+    try {
+      // Vibração forte tripla para notificar claramente
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Aguarda um pouco e vibra novamente para chamar mais atenção
+      setTimeout(async () => {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }, 200);
+
+      setTimeout(async () => {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }, 400);
+
+      // Configura o áudio para tocar mesmo no modo silencioso
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
+
+      // Toca um som de notificação usando o sistema
+      // Usamos um beep curto e agudo
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: 'https://www.soundjay.com/buttons/sounds/beep-07a.mp3' },
+        { shouldPlay: true, volume: 1.0 }
+      );
+
+      // Limpa o som após tocar
+      setTimeout(async () => {
+        try {
+          await sound.unloadAsync();
+        } catch (e) {
+          console.log('Erro ao limpar som:', e);
+        }
+      }, 2000);
+    } catch (error) {
+      // Se falhar ao tocar som, apenas vibra
+      console.log('Erro ao tocar notificação:', error);
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setTimeout(async () => {
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }, 200);
+      } catch (e) {
+        console.log('Erro na vibração:', e);
+      }
+    }
   };
 
-  const handleUpdateSet = (exerciseId: string, updatedSet: Set) => {
+  const startRestTimer = useCallback(() => {
+    setRestTimeRemaining(configuredRestTime);
+    setIsResting(true);
+
+    let timeLeft = configuredRestTime;
+    restTimerRef.current = setInterval(() => {
+      timeLeft -= 1;
+      setRestTimeRemaining(timeLeft);
+
+      if (timeLeft <= 0) {
+        if (restTimerRef.current) {
+          clearInterval(restTimerRef.current);
+          restTimerRef.current = null;
+        }
+        playRestCompleteNotification(); // Notifica o usuário
+
+        // Mantém o modal aberto por 3 segundos após o término para o usuário ver a notificação
+        setTimeout(() => {
+          setIsResting(false);
+          setRestTimeRemaining(null);
+        }, 3000);
+      }
+    }, 1000);
+  }, [configuredRestTime]);
+
+  const skipRest = useCallback(() => {
+    if (restTimerRef.current) {
+      clearInterval(restTimerRef.current);
+      restTimerRef.current = null;
+    }
+    setIsResting(false);
+    setRestTimeRemaining(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (restTimerRef.current) {
+        clearInterval(restTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleUpdateSet = useCallback((exerciseId: string, updatedSet: Set) => {
     const newWorkout = { ...currentWorkout };
     const exercise = newWorkout.exercises.find(e => e.id === exerciseId);
     if (exercise) {
       const setIndex = exercise.sets.findIndex(s => s.id === updatedSet.id);
       if (setIndex !== -1) {
+        const previouslyCompleted = exercise.sets[setIndex].isCompleted;
         exercise.sets[setIndex] = updatedSet;
         setCurrentWorkout(newWorkout);
+
+        // Se a série foi marcada como concluída (e não estava antes), inicia timer de descanso
+        if (updatedSet.isCompleted && !previouslyCompleted) {
+          const isLastSetOfExercise = setIndex === exercise.sets.length - 1;
+          const isLastExercise = currentExerciseIndex === currentWorkout.exercises.length - 1;
+
+          // Só inicia o timer se não for a última série do último exercício
+          if (!isLastSetOfExercise || !isLastExercise) {
+            startRestTimer();
+          }
+        }
       }
     }
-  };
+  }, [currentWorkout, currentExerciseIndex, startRestTimer]);
 
-  const handleNextExercise = () => {
+  const handleNextExercise = useCallback(() => {
     if (currentExerciseIndex < currentWorkout.exercises.length - 1) {
       setCurrentExerciseIndex(prev => prev + 1);
     }
-  };
+  }, [currentExerciseIndex, currentWorkout.exercises.length]);
 
-  const handlePrevExercise = () => {
+  const handlePrevExercise = useCallback(() => {
     if (currentExerciseIndex > 0) {
       setCurrentExerciseIndex(prev => prev - 1);
     }
-  };
+  }, [currentExerciseIndex]);
 
-  const areAllSetsCompleted = (exercise: Exercise) => {
+  const areAllSetsCompleted = useCallback((exercise: Exercise) => {
     return exercise.sets.every(set => set.isCompleted);
-  };
+  }, []);
 
-  const areAllExercisesCompleted = () => {
+  const areAllExercisesCompleted = useCallback(() => {
     return currentWorkout.exercises.every(exercise => areAllSetsCompleted(exercise));
-  };
+  }, [currentWorkout.exercises, areAllSetsCompleted]);
 
   const handleFinishWorkout = () => {
     const duration = Math.floor((Date.now() - startTime) / 1000);
@@ -124,22 +261,22 @@ export default function StartWorkoutScreen() {
   const currentExercise = currentWorkout.exercises[currentExerciseIndex];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        style={styles.mainContainer} 
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView
+        style={[styles.mainContainer, { backgroundColor: colors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.backButton}>Voltar</Text>
+        <View style={[styles.header, { borderBottomColor: colors.borderLight }]}>
+          <TouchableOpacity onPress={handleBackPress}>
+            <Text style={[styles.backButton, { color: colors.primary }]}>Voltar</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>{currentWorkout.name}</Text>
-          <Text style={styles.timer}>{formatTime(elapsedTime)}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{currentWorkout.name}</Text>
+          <Timer elapsedTime={elapsedTime} style={{ color: colors.primary }} />
         </View>
         <ScrollView style={styles.content}>
-          <View key={currentExercise.id} style={styles.exerciseContainer}>
+          <View key={currentExercise.id} style={[styles.exerciseContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.exerciseHeader}>
-              <Text style={styles.exerciseTitle}>{currentExercise.name}</Text>
+              <Text style={[styles.exerciseTitle, { color: colors.text }]}>{currentExercise.name}</Text>
             </View>
             {currentExercise.imageUri && <ExerciseImage imageUri={currentExercise.imageUri} imageStyle={styles.smallExerciseImage} />}
             <View style={styles.setsContainer}>
@@ -156,24 +293,24 @@ export default function StartWorkoutScreen() {
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.navButton, currentExerciseIndex === 0 && styles.disabledButton]}
-            onPress={handlePrevExercise} 
+        <View style={[styles.footer, { borderTopColor: colors.borderLight, backgroundColor: colors.background }]}>
+          <TouchableOpacity
+            style={[styles.navButton, { backgroundColor: colors.primary }, currentExerciseIndex === 0 && { backgroundColor: colors.disabled }]}
+            onPress={handlePrevExercise}
             disabled={currentExerciseIndex === 0}
           >
             <Text style={styles.navButtonText}>Anterior</Text>
           </TouchableOpacity>
           {currentExerciseIndex === currentWorkout.exercises.length - 1 ? (
-            <TouchableOpacity 
-              style={[styles.finishButton, areAllExercisesCompleted() ? styles.finishButtonReady : styles.finishButtonDisabled]}
+            <TouchableOpacity
+              style={[styles.finishButton, { backgroundColor: areAllExercisesCompleted() ? colors.success : colors.disabled }]}
               onPress={handleFinishWorkout}
             >
               <Text style={styles.finishButtonText}>Finalizar Treino</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity 
-              style={[styles.navButton, !areAllSetsCompleted(currentExercise) && styles.navButtonNotReady]}
+            <TouchableOpacity
+              style={[styles.navButton, { backgroundColor: areAllSetsCompleted(currentExercise) ? colors.primary : colors.disabled }]}
               onPress={handleNextExercise}
             >
               <Text style={styles.navButtonText}>Próximo</Text>
@@ -181,6 +318,44 @@ export default function StartWorkoutScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Rest Timer Modal */}
+      <Modal
+        visible={isResting}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.restModalOverlay}>
+          <View style={[
+            styles.restModalContent,
+            { backgroundColor: colors.surface },
+            restTimeRemaining !== null && restTimeRemaining <= 0 && { borderColor: colors.success, borderWidth: 3 }
+          ]}>
+            <Text style={[styles.restModalTitle, { color: colors.text }]}>
+              {restTimeRemaining !== null && restTimeRemaining <= 0 ? '✓ Pronto!' : 'Descanse'}
+            </Text>
+            <Text style={[
+              styles.restTimerText,
+              { color: restTimeRemaining !== null && restTimeRemaining <= 0 ? colors.success : colors.primary }
+            ]}>
+              {restTimeRemaining !== null && restTimeRemaining >= 0 ? `${restTimeRemaining}s` : '0s'}
+            </Text>
+            {restTimeRemaining !== null && restTimeRemaining <= 0 && (
+              <Text style={[styles.restCompleteMessage, { color: colors.success }]}>
+                Descanso concluído! Pronto para próxima série.
+              </Text>
+            )}
+            <TouchableOpacity
+              style={[styles.skipRestButton, { backgroundColor: colors.primary }]}
+              onPress={skipRest}
+            >
+              <Text style={styles.skipRestButtonText}>
+                {restTimeRemaining !== null && restTimeRemaining <= 0 ? 'Continuar' : 'Pular Descanso'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -188,11 +363,9 @@ export default function StartWorkoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   mainContainer: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -200,11 +373,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   backButton: {
     fontSize: 16,
-    color: '#007AFF',
   },
   title: {
     fontSize: 20,
@@ -214,7 +385,6 @@ const styles = StyleSheet.create({
   },
   timer: {
     fontSize: 16,
-    color: '#007AFF',
     fontWeight: '600',
   },
   content: {
@@ -222,7 +392,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   exerciseContainer: {
-    backgroundColor: '#f8f8f8',
     padding: 15,
     borderRadius: 8,
     marginBottom: 15,
@@ -291,11 +460,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
   },
   navButton: {
-    backgroundColor: '#007AFF',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -306,14 +472,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  navButtonNotReady: {
-    backgroundColor: '#ccc',
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
+  navButtonNotReady: {},
+  disabledButton: {},
   finishButton: {
-    backgroundColor: '#34C759',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -324,10 +485,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  finishButtonReady: {
-    backgroundColor: '#34C759',
+  finishButtonReady: {},
+  finishButtonDisabled: {},
+  restModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  finishButtonDisabled: {
-    backgroundColor: '#ccc',
+  restModalContent: {
+    borderRadius: 16,
+    padding: 40,
+    alignItems: 'center',
+    minWidth: 280,
+  },
+  restModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  restTimerText: {
+    fontSize: 72,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  restCompleteMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontWeight: '500',
+  },
+  skipRestButton: {
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  skipRestButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

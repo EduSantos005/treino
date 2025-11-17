@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, Button } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-// Adicionado para forçar re-bundle
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../src/contexts/ThemeContext';
 
 const WorkoutSummaryScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { colors } = useTheme();
 
   const workoutName = params.workoutName as string;
   const workoutDuration = Number(params.workoutDuration);
@@ -19,15 +20,15 @@ const WorkoutSummaryScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Treino Concluído!</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>Treino Concluído!</Text>
       <View style={styles.summaryContainer}>
-        <Text style={styles.label}>Nome do Treino:</Text>
-        <Text style={styles.value}>{workoutName}</Text>
-        <Text style={styles.label}>Tempo de Treino:</Text>
-        <Text style={styles.value}>{formatDuration(workoutDuration)}</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Nome do Treino:</Text>
+        <Text style={[styles.value, { color: colors.textSecondary }]}>{workoutName}</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Tempo de Treino:</Text>
+        <Text style={[styles.value, { color: colors.textSecondary }]}>{formatDuration(workoutDuration)}</Text>
       </View>
-      <Button title="Voltar para o Início" onPress={() => router.replace('/')} />
+      <Button title="Voltar para o Início" onPress={() => router.replace('/')} color={colors.primary} />
     </SafeAreaView>
   );
 };

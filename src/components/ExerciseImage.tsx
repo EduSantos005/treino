@@ -1,4 +1,5 @@
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View, StyleProp, ImageStyle } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 interface ExerciseImageProps {
   imageUri?: string;

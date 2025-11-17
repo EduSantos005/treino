@@ -20,11 +20,14 @@ import { getCategoryLabel } from '../src/constants/workoutTypes';
 import { getDb } from '../src/services/database';
 import { storage, Workout } from '../src/services/storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { toast } from '../src/utils/toast';
+import { useTheme } from '../src/contexts/ThemeContext';
 // Adicionado para forçar re-bundle
 
 export default function AddWorkoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { colors } = useTheme();
   const [inputRefs] = useState<{ [key: string]: React.RefObject<TextInput | null> }>({});
 
   const getInputRef = (exerciseId: string, field: string) => {
@@ -89,19 +92,19 @@ export default function AddWorkoutScreen() {
 
   const saveWorkout = async () => {
     if (!workoutName.trim()) {
-      showAlert('Atenção', 'Digite o nome do treino');
+      toast.error('Digite o nome do treino');
       return;
     }
 
     if (exercises.length === 0) {
-      showAlert('Atenção', 'Adicione pelo menos um exercício');
+      toast.error('Adicione pelo menos um exercício');
       return;
     }
 
     // Validar que todos os exercícios têm valores válidos
     for (const exercise of exercises) {
       if (!exercise.sets || exercise.sets.length === 0) {
-        showAlert('Atenção', `O exercício "${exercise.name}" precisa ter pelo menos uma série`);
+        toast.error(`O exercício "${exercise.name}" precisa ter pelo menos uma série`);
         return;
       }
 
@@ -110,12 +113,12 @@ export default function AddWorkoutScreen() {
         const weight = parseFloat(set.weight);
 
         if (isNaN(reps) || reps <= 0) {
-          showAlert('Atenção', `O exercício "${exercise.name}" tem séries com repetições inválidas. Use valores maiores que zero.`);
+          toast.error(`O exercício "${exercise.name}" tem séries com repetições inválidas`);
           return;
         }
 
         if (isNaN(weight) || weight < 0) {
-          showAlert('Atenção', `O exercício "${exercise.name}" tem séries com peso inválido. Use valores positivos ou zero.`);
+          toast.error(`O exercício "${exercise.name}" tem séries com peso inválido`);
           return;
         }
       }
@@ -129,10 +132,10 @@ export default function AddWorkoutScreen() {
 
     if (workoutId) {
       await storage.updateWorkout({ ...workoutData, id: workoutId });
-      showAlert('Sucesso!', `Treino "${workoutName}" foi atualizado.`);
+      toast.success(`Treino "${workoutName}" atualizado!`);
     } else {
       await storage.saveWorkout(workoutData);
-      showAlert('Sucesso!', `Treino "${workoutName}" foi salvo com ${exercises.length} exercício(s)`);
+      toast.success(`Treino "${workoutName}" salvo com sucesso!`);
     }
 
     router.push('/');
@@ -140,27 +143,28 @@ export default function AddWorkoutScreen() {
 
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        style={styles.mainContainer} 
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView
+        style={[styles.mainContainer, { backgroundColor: colors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView style={styles.content}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.backButton}>Voltar</Text>
+              <Text style={[styles.backButton, { color: colors.primary }]}>Voltar</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Novo Treino</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Novo Treino</Text>
             <View style={{ width: 50 }} />
           </View>
-          
-          
-          <Text style={styles.label}>Nome do Treino</Text>
+
+
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Nome do Treino</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.border, backgroundColor: colors.surface, color: colors.text }]}
             value={initialWorkoutData.name || workoutName}
             onChangeText={setWorkoutName}
             placeholder="Ex: Treino A - Peito e Tríceps"
+            placeholderTextColor={colors.placeholder}
             returnKeyType="next"
             onSubmitEditing={() => {
               if (exercises.length === 0) {
@@ -171,12 +175,12 @@ export default function AddWorkoutScreen() {
             }}
           />
 
-          <Text style={styles.label}>Categoria</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Categoria</Text>
           <TouchableOpacity
-            style={styles.categorySelector}
+            style={[styles.categorySelector, { borderColor: colors.border, backgroundColor: colors.surface }]}
             onPress={() => setShowCategorySelector(true)}
           >
-            <Text style={styles.categorySelectorText}>
+            <Text style={[styles.categorySelectorText, { color: colors.text }]}>
               {getCategoryLabel(category)}
             </Text>
           </TouchableOpacity>
@@ -194,16 +198,16 @@ export default function AddWorkoutScreen() {
             onConfirmSelection={handleConfirmSelection}
           />
 
-          <Text style={styles.subtitle}>Exercícios</Text>
-          
+          <Text style={[styles.subtitle, { color: colors.text }]}>Exercícios</Text>
+
           {exercises.map((exercise, index) => {
             const exerciseNumber = `Exercício ${index + 1}`;
             return (
-              <View key={exercise.id} style={styles.exerciseContainer}>
+              <View key={exercise.id} style={[styles.exerciseContainer, { backgroundColor: colors.surface }]}>
                 <View style={styles.exerciseHeader}>
-                  <Text style={styles.exerciseTitle}>{exerciseNumber}</Text>
+                  <Text style={[styles.exerciseTitle, { color: colors.text }]}>{exerciseNumber}</Text>
                   <TouchableOpacity
-                    style={styles.removeButton}
+                    style={[styles.removeButton, { backgroundColor: colors.error }]}
                     onPress={() => {
                       setExercises(exercises.filter(e => e.id !== exercise.id));
                     }}
@@ -214,23 +218,24 @@ export default function AddWorkoutScreen() {
 
                 <ExerciseImage
                   imageUri={exercise.imageUri}
-                  onImageSelected={(uri) => 
+                  onImageSelected={(uri) =>
                     updateExercise(exercise.id, 'imageUri', uri)
                   }
                 />
-                
+
                 <TextInput
                   ref={getInputRef(exercise.id, 'name')}
-                  style={styles.input}
+                  style={[styles.input, { borderColor: colors.border, backgroundColor: colors.surface, color: colors.text }]}
                   value={exercise.name}
                   onChangeText={(value) => updateExercise(exercise.id, 'name', value)}
                   placeholder="Nome do exercício"
+                  placeholderTextColor={colors.placeholder}
                   returnKeyType="next"
                   onSubmitEditing={() => focusNextInput(exercise.id, 'name')}
                   blurOnSubmit={false}
                 />
                 <View style={styles.setsContainer}>
-                  <Text style={styles.setsTitle}>Séries</Text>
+                  <Text style={[styles.setsTitle, { color: colors.text }]}>Séries</Text>
                   {exercise.sets.map((set, setIndex) => (
                     <SetRow
                       key={`set-${exercise.id}-${setIndex}`}
@@ -260,32 +265,32 @@ export default function AddWorkoutScreen() {
                     />
                   ))}
                   <TouchableOpacity
-                    style={styles.addSetButton}
+                    style={[styles.addSetButton, { backgroundColor: colors.surfaceVariant }]}
                     onPress={() => {
                       const newSet: Set = { id: Date.now() + Math.random(), number: exercise.sets.length + 1, reps: '10', weight: '10', weightUnit: 'kg', isCompleted: false };
                       updateExercise(exercise.id, 'sets', [...exercise.sets, newSet]);
                     }}
                   >
-                    <Text style={styles.addSetButtonText}>+ Adicionar Série</Text>
+                    <Text style={[styles.addSetButtonText, { color: colors.primary }]}>+ Adicionar Série</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             );
           })}
 
-          <TouchableOpacity 
-            style={styles.addButton} 
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
             onPress={() => setShowExerciseSelector(true)}
           >
             <Text style={styles.addButtonText}>+ Adicionar Exercício</Text>
           </TouchableOpacity>
-          
+
           <View style={{ height: 20 }} />
         </ScrollView>
 
-        <View style={styles.bottomContainer}>
-          <TouchableOpacity 
-            style={styles.saveButton}
+        <View style={[styles.bottomContainer, { borderTopColor: colors.borderLight, backgroundColor: colors.background }]}>
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: colors.success }]}
             onPress={saveWorkout}
             activeOpacity={0.5}
           >
@@ -306,7 +311,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     fontSize: 16,
-    color: '#007AFF',
   },
   setsContainer: {
     marginTop: 10,
@@ -317,24 +321,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   addSetButton: {
-    backgroundColor: '#f0f0f0',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 8,
   },
   addSetButtonText: {
-    color: '#007AFF',
     fontSize: 14,
     fontWeight: '600',
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   mainContainer: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
@@ -356,18 +356,15 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     marginBottom: 5,
-    color: '#666',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
     marginBottom: 15,
     fontSize: 16,
   },
   exerciseContainer: {
-    backgroundColor: '#f8f8f8',
     padding: 15,
     borderRadius: 8,
     marginBottom: 15,
@@ -383,7 +380,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   removeButton: {
-    backgroundColor: '#FF3B30',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -404,14 +400,12 @@ const styles = StyleSheet.create({
   },
   smallInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 10,
     fontSize: 16,
     textAlign: 'center',
   },
   addButton: {
-    backgroundColor: '#007AFF',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -425,11 +419,8 @@ const styles = StyleSheet.create({
   bottomContainer: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
   },
   saveButton: {
-    backgroundColor: '#34C759',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -441,14 +432,11 @@ const styles = StyleSheet.create({
   },
   categorySelector: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
     marginBottom: 15,
-    backgroundColor: '#f8f8f8',
   },
   categorySelectorText: {
     fontSize: 16,
-    color: '#333',
   },
 });

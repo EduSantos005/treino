@@ -22,7 +22,7 @@ interface SetRowProps {
   isEditable?: boolean; // Nova prop para controlar a edição
 }
 
-export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, weightRef, onSubmitReps, isEditable = true }: SetRowProps) {
+export const SetRow = React.memo(({ set, onUpdate, onDelete, showDelete = true, repsRef, weightRef, onSubmitReps, isEditable = true }: SetRowProps) => {
   const [showUnitSelector, setShowUnitSelector] = useState(false);
 
   const handleComplete = () => {
@@ -141,7 +141,18 @@ export function SetRow({ set, onUpdate, onDelete, showDelete = true, repsRef, we
       </View>
     </View>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison: só re-renderiza se propriedades relevantes mudarem
+  return (
+    prevProps.set.id === nextProps.set.id &&
+    prevProps.set.reps === nextProps.set.reps &&
+    prevProps.set.weight === nextProps.set.weight &&
+    prevProps.set.isCompleted === nextProps.set.isCompleted &&
+    prevProps.set.weightUnit === nextProps.set.weightUnit &&
+    prevProps.isEditable === nextProps.isEditable &&
+    prevProps.showDelete === nextProps.showDelete
+  );
+});
 
 const styles = StyleSheet.create({
   setHeader: {

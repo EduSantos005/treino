@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { initDB, seedDefaultWorkouts } from "../src/services/database";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import Toast from 'react-native-toast-message';
+import { ThemeProvider } from "../src/contexts/ThemeContext";
 
 export default function RootLayout() {
   const [dbInitialized, setDbInitialized] = useState(false);
@@ -31,8 +33,11 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </SafeAreaProvider>
+    <ThemeProvider>
+      <SafeAreaProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+        <Toast />
+      </SafeAreaProvider>
+    </ThemeProvider>
   );
 }

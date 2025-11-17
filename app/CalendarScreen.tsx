@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDb } from '../src/services/database';
 import { storage, WorkoutLog, Workout } from '../src/services/storage';
 import { useRouter } from 'expo-router';
+import { useTheme } from '../src/contexts/ThemeContext';
 
 // Define types based on database schema
 type Set = { id: number; reps: number; weight: number };
@@ -25,6 +26,7 @@ LocaleConfig.defaultLocale = 'pt-br';
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [history, setHistory] = useState<WorkoutLog[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
@@ -40,7 +42,7 @@ export default function CalendarScreen() {
       const day = localDate.getDate().toString().padStart(2, '0');
       const localDateString = `${year}-${month}-${day}`;
 
-      acc[localDateString] = { ...acc[localDateString], marked: true, dotColor: '#007AFF' };
+      acc[localDateString] = { ...acc[localDateString], marked: true, dotColor: colors.primary };
       return acc;
     }, {} as MarkedDates);
 
@@ -48,11 +50,11 @@ export default function CalendarScreen() {
       baseMarkings[selectedDate] = {
         ...baseMarkings[selectedDate],
         selected: true,
-        selectedColor: '#007AFF',
+        selectedColor: colors.primary,
       };
     }
     setMarkedDates(baseMarkings);
-  }, [history, selectedDate]);
+  }, [history, selectedDate, colors]);
 
   const loadData = async () => {
     setLoading(true);
@@ -196,38 +198,45 @@ export default function CalendarScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.borderLight }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backButton}>Voltar</Text>
+          <Text style={[styles.backButton, { color: colors.primary }]}>Voltar</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Histórico de Treinos</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Histórico de Treinos</Text>
         <View style={{ width: 50 }} />
       </View>
       <Calendar
         markedDates={markedDates}
         onDayPress={(day) => setSelectedDate(day.dateString)}
-        theme={{ todayTextColor: '#007AFF', arrowColor: '#007AFF' }}
+        theme={{
+          todayTextColor: colors.primary,
+          arrowColor: colors.primary,
+          calendarBackground: colors.background,
+          textSectionTitleColor: colors.text,
+          dayTextColor: colors.text,
+          monthTextColor: colors.text,
+        }}
       />
       <ScrollView style={styles.detailsContainer}>
         {selectedDate && workoutsForSelectedDate.length > 0 ? (
           workoutsForSelectedDate.map(log => (
-            <View key={log.logId} style={styles.logCard}>
+            <View key={log.logId} style={[styles.logCard, { backgroundColor: colors.background }]}>
               <View style={styles.logCardHeader}>
-                <Text style={styles.logTitle}>{log.name}</Text>
+                <Text style={[styles.logTitle, { color: colors.text }]}>{log.name}</Text>
                 <TouchableOpacity onPress={() => handleDeleteLog(log.logId)}>
-                  <Text style={styles.deleteLogText}>Excluir</Text>
+                  <Text style={[styles.deleteLogText, { color: colors.error }]}>Excluir</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.logDate}>
+              <Text style={[styles.logDate, { color: colors.textSecondary }]}>
                 {new Date(log.completedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 {log.duration ? ` - ${formatDuration(log.duration)}` : ''}
               </Text>
               {(log.exercises || []).map(ex => (
-                <View key={ex.id} style={styles.exerciseContainer}>
-                  <Text style={styles.exerciseName}>{ex.name}</Text>
+                <View key={ex.id} style={[styles.exerciseContainer, { borderLeftColor: colors.primary }]}>
+                  <Text style={[styles.exerciseName, { color: colors.text }]}>{ex.name}</Text>
                   {(ex.sets || []).map(set => (
-                    <Text key={set.id} style={styles.setText}>
+                    <Text key={set.id} style={[styles.setText, { color: colors.textSecondary }]}>
                       Série {set.reps} reps com {set.weight} {set.weightUnit}
                     </Text>
                   ))}
@@ -237,13 +246,13 @@ export default function CalendarScreen() {
           ))
         ) : selectedDate ? (
           <View style={styles.noWorkoutContainer}>
-            <Text style={styles.noWorkoutText}>Nenhum treino registrado neste dia.</Text>
-            <TouchableOpacity style={styles.logButton} onPress={() => setModalVisible(true)}>
+            <Text style={[styles.noWorkoutText, { color: colors.textSecondary }]}>Nenhum treino registrado neste dia.</Text>
+            <TouchableOpacity style={[styles.logButton, { backgroundColor: colors.primary }]} onPress={() => setModalVisible(true)}>
               <Text style={styles.logButtonText}>Registrar Treino Realizado</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <Text style={styles.noWorkoutText}>Selecione uma data para ver os treinos.</Text>
+          <Text style={[styles.noWorkoutText, { color: colors.textSecondary }]}>Selecione uma data para ver os treinos.</Text>
         )}
       </ScrollView>
 
@@ -254,20 +263,20 @@ export default function CalendarScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Registrar Treino</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Registrar Treino</Text>
             <FlatList
               data={workouts}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
-                <TouchableOpacity style={styles.workoutOption} onPress={() => handleLogWorkout(item)}>
-                  <Text style={styles.workoutOptionText}>
+                <TouchableOpacity style={[styles.workoutOption, { borderBottomColor: colors.borderLight }]} onPress={() => handleLogWorkout(item)}>
+                  <Text style={[styles.workoutOptionText, { color: colors.text }]}>
                     {item.name} ({getCategoryLabel(item.category)})
                   </Text>
                 </TouchableOpacity>
               )}
             />
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+            <TouchableOpacity style={[styles.cancelButton, { backgroundColor: colors.error }]} onPress={() => setModalVisible(false)}>
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
@@ -280,32 +289,26 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   backButton: {
     fontSize: 16,
-    color: '#007AFF',
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
   },
   detailsContainer: {
     flex: 1,
     padding: 10,
   },
   logCard: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 15,
     marginBottom: 10,
@@ -324,32 +327,26 @@ const styles = StyleSheet.create({
   logTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
   },
   deleteLogText: {
-    color: 'red',
     fontWeight: 'bold',
   },
   logDate: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 10,
   },
   exerciseContainer: {
     marginBottom: 8,
     paddingLeft: 10,
     borderLeftWidth: 2,
-    borderLeftColor: '#007AFF',
   },
   exerciseName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#555',
     marginBottom: 3,
   },
   setText: {
     fontSize: 14,
-    color: '#777',
   },
   noWorkoutContainer: {
     alignItems: 'center',
@@ -357,12 +354,10 @@ const styles = StyleSheet.create({
   },
   noWorkoutText: {
     fontSize: 16,
-    color: '#666',
     marginBottom: 20,
     textAlign: 'center',
   },
   logButton: {
-    backgroundColor: '#007AFF',
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 25,
@@ -379,7 +374,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 20,
     width: '80%',
@@ -390,20 +384,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 15,
     textAlign: 'center',
-    color: '#333',
   },
   workoutOption: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   workoutOptionText: {
     fontSize: 16,
-    color: '#333',
   },
   cancelButton: {
     marginTop: 20,
-    backgroundColor: '#f44336',
     paddingVertical: 12,
     borderRadius: 25,
     alignItems: 'center',

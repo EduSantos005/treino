@@ -27,7 +27,8 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - ✅ Marcar séries como concluídas com feedback visual e tátil (vibração)
 - ✅ **Timer de Descanso Aprimorado:** O timer de descanso agora funciona corretamente mesmo se o aplicativo for para o segundo plano.
 - ✅ Navegação fluida entre os exercícios do treino (carrossel)
-- ✅ Alertas de confirmação inteligentes para evitar perda de dados
+- ✅ **Proteção contra Perda de Dados:** Alerta de confirmação ao tentar sair do treino em andamento
+- ✅ **Suporte a Hardware Back Button:** Intercepta botão voltar do Android para prevenir saída acidental
 
 ### Histórico de Treinos
 - ✅ Registro detalhado de treinos concluídos, incluindo exercícios, séries, repetições e pesos.
@@ -41,19 +42,27 @@ Um aplicativo móvel para registro e acompanhamento de treinos de academia, dese
 - ✅ Ajuste automático da tela para o teclado não cobrir os campos
 - ✅ **Validação em Tempo Real:** Inputs bloqueiam valores negativos e caracteres inválidos durante a digitação
 - ✅ **Validação Pré-salvamento:** Verifica integridade de dados antes de salvar treinos
+- ✅ **Toast Notifications:** Feedback visual moderno e não intrusivo para ações de sucesso e erro
 - ✅ Mensagens de feedback claras e específicas para cada tipo de erro
 - ✅ Suporte a gestos no carrossel de exercícios
 - ✅ **Posicionamento de Títulos:** Ajuste fino no posicionamento dos títulos das telas para uma melhor estética e consistência.
 - ✅ **Navegação Aprimorada:** Texto do atalho 'Biblioteca' alterado para 'Exercícios' para maior clareza.
+
+### Performance
+- ✅ **Componentes Memoizados:** SetRow otimizado com React.memo para evitar re-renderizações desnecessárias
+- ✅ **Timer Isolado:** Cronômetro em componente separado para performance otimizada
+- ✅ **useCallback:** Funções memoizadas para evitar recriação em cada render
+- ✅ **Renderização Eficiente:** Apenas componentes afetados são re-renderizados durante treino ativo
 
 ## 🛠 Tecnologias Utilizadas
 
 - **React Native**: Framework para desenvolvimento mobile
 - **Expo**: Plataforma de desenvolvimento (SDK 50+)
 - **React Navigation**: Sistema de navegação
-- **Expo-SQLite**: Banco de dados local para persistência de dados offline-first.
-- **TypeScript**: Tipagem estática
+- **Expo-SQLite**: Banco de dados local para persistência de dados offline-first
+- **TypeScript**: Tipagem estática (strict mode)
 - **Expo Haptics**: Feedback tátil (vibração)
+- **React Native Toast Message**: Notificações toast modernas e customizáveis
 
 ## 📱 Telas
 
@@ -140,10 +149,9 @@ npx expo start
 
 ## 📝 Próximos Passos
 
-- [ ] UX e Performance:
-  - [ ] Substituir Alerts por toast notifications
-  - [ ] Adicionar memoização em componentes pesados (cronômetro)
+- [ ] Refatoração de código:
   - [ ] Centralizar tipos duplicados em /src/types/models.ts
+  - [ ] Criar hooks customizados para lógica reutilizável
 - [ ] Tracking de progresso:
   - [ ] Histórico de peso/repetições
   - [ ] Gráficos de evolução
@@ -171,15 +179,35 @@ Este projeto foi desenvolvido usando boas práticas de programação:
 
 ## 🔄 Changelog Recente
 
-### 17/11/2024 - Correções e Validações
+### 17/11/2024 - Correções, Validações, UX e Performance
 - ✅ **Corrigido:** Inconsistência entre propriedade 'type' e 'category' nos treinos
   - Padronizado uso de 'category' em toda a aplicação
   - Removidos tipos locais duplicados em favor de tipos canônicos
+
 - ✅ **Adicionado:** Validação robusta de inputs
   - Bloqueio de valores negativos em repetições e peso (tempo real)
   - Validação pré-salvamento de integridade de dados
   - Suporte a valores decimais em peso (ex: 22.5 kg)
   - Mensagens de erro específicas por tipo de validação
+
+- ✅ **Adicionado:** Proteção contra perda de dados durante treino
+  - Alerta de confirmação ao clicar em "Voltar" durante treino ativo
+  - Interceptação do botão voltar do hardware (Android)
+  - Previne perda acidental de progresso do treino
+
+- ✅ **Adicionado:** Toast Notifications (UX Moderna)
+  - Substituição de Alerts por toasts em feedbacks informativos
+  - Notificações não intrusivas que desaparecem automaticamente
+  - Mantém Alerts apenas para confirmações críticas (excluir, sair)
+  - Experiência mais fluida sem interrupções
+
+- ✅ **Otimizado:** Performance e renderização
+  - SetRow memoizado com React.memo e comparação customizada
+  - Componente Timer isolado para evitar re-renders desnecessários
+  - useCallback em todas as funções do StartWorkoutScreen
+  - Redução drástica de re-renderizações durante treino ativo
+  - App mais fluido especialmente em treinos longos
+
 - ✅ **Melhorado:** Consistência de tipos TypeScript
   - Importação de tipos canônicos de `storage.ts`
   - Melhor inferência de tipos em componentes
